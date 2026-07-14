@@ -16,7 +16,7 @@ import { sendContractEmail } from '../lib/email'
 import { nowLocal, ANTIRADAR_PRICE } from '../lib/pricing'
 import { fmtCZK, fmtDateTime, contractNumber } from '../lib/format'
 
-const STEPS = ['Vozidlo', 'Termín a cena', 'Nájemce', 'Podpis'] as const
+const STEPS = ['Vozidlo', 'Foto vozidla', 'Termín a cena', 'Nájemce', 'Podpis'] as const
 
 function addHoursLocal(startLocal: string, hours: number): string {
   const d = new Date(startLocal)
@@ -134,7 +134,7 @@ export function NewContract() {
 
   // náhled smlouvy na kroku Podpis – klient si ji přečte ještě před podepsáním
   useEffect(() => {
-    if (step !== 3 || !car) return
+    if (step !== 4 || !car) return
     let url: string | undefined
     let cancelled = false
     const t = setTimeout(async () => {
@@ -171,6 +171,7 @@ export function NewContract() {
 
   const canNext = [
     !!carId,
+    true, // foto vozidla – volitelné, lze přeskočit
     !!rentalStart && !!rentalEnd && endAfterStart && basePriceNum > 0 && !conflict,
     nameValid && idValid && emailValid && phoneValid,
     !sigEmpty && depositPaid,
@@ -259,24 +260,27 @@ export function NewContract() {
             ))}
             </div>
 
-            {carId && (
-              <div className="card" style={{ marginTop: 14 }}>
-                <h2>Foto vozidla (stav při předání)</h2>
-                <div className="photo-grid">
-                  {carPhotos.map((b, i) => (
-                    <PhotoInput key={i} kind="car" label="Foto vozidla" blob={b}
-                      onCapture={(_, nb) => setCarPhotos((a) => a.map((x, j) => (j === i ? nb : x)))}
-                      onRemove={() => setCarPhotos((a) => a.filter((_, j) => j !== i))} />
-                  ))}
-                  <AddCarPhoto onAdd={(b) => setCarPhotos((a) => [...a, b])} />
-                </div>
-                <p className="note" style={{ marginTop: 10 }}>Nepovinné, doporučené – přiloží se ke smlouvě jako důkaz stavu.</p>
-              </div>
-            )}
           </div>
         )}
 
         {step === 1 && (
+          <div>
+            <div className="card">
+              <h2>Foto vozidla (stav při předání)</h2>
+              <div className="photo-grid">
+                {carPhotos.map((b, i) => (
+                  <PhotoInput key={i} kind="car" label="Foto vozidla" blob={b}
+                    onCapture={(_, nb) => setCarPhotos((a) => a.map((x, j) => (j === i ? nb : x)))}
+                    onRemove={() => setCarPhotos((a) => a.filter((_, j) => j !== i))} />
+                ))}
+                <AddCarPhoto onAdd={(b) => setCarPhotos((a) => [...a, b])} />
+              </div>
+              <p className="note" style={{ marginTop: 10 }}>Nepovinné, doporučené – přiloží se ke smlouvě jako důkaz stavu vozidla při předání.</p>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
           <div>
             <div className="card">
               <h2>Cena nájmu</h2>
@@ -313,16 +317,38 @@ export function NewContract() {
           </div>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <div>
+            <div className="card">
+              <h2>Foto dokladů</h2>
+              <div className="photo-grid">
+                {DOC_FIELDS.map((f) => (
+                  <PhotoInput key={f.kind} kind={f.kind} label={f.label} blob={docPhotos[f.kind]}
+                    onCapture={(k, b) => setDocPhotos((p) => ({ ...p, [k]: b }))}
+                    onRemove={(k) => setDocPhotos((p) => { const n = { ...p }; delete n[k]; return n })} />
+                ))}
+              </div>
+              <button
+                type="button"
+                className="btn ghost"
+                style={{ marginTop: 12 }}
+                disabled={ocrBusy || (!docPhotos.idFront && !docPhotos.licenseFront)}
+                onClick={runOcr}
+              >
+                {ocrBusy ? <><span className="spin">⏳</span> Načítám z fotky…</> : '✨ Načíst údaje z fotky dokladu'}
+              </button>
+              {ocrMsg && <div className="note" style={{ marginTop: 8 }}>{ocrMsg}</div>}
+              <p className="note" style={{ marginTop: 10 }}>Vyfoť občanku a klikni „Načíst z fotky" – doplní jméno, příjmení a rodné číslo (můžeš opravit). Foto se přiloží ke smlouvě.</p>
+            </div>
+
             <div className="card">
               <h2>Nájemce</h2>
               <div className="field">
-                <label>Příjmení *</label>
-                <input value={customer.lastName}
-                  onChange={(e) => { upd({ lastName: e.target.value }); refreshSuggestions(e.target.value); setShowSuggest(true) }}
-                  onFocus={() => customer.lastName.length >= 2 && setShowSuggest(true)}
-                  placeholder="začni psát – našeptá dřívějšího klienta" autoComplete="off" />
+                <label>Jméno *</label>
+                <input value={customer.firstName}
+                  onChange={(e) => { upd({ firstName: e.target.value }); refreshSuggestions(e.target.value); setShowSuggest(true) }}
+                  onFocus={() => customer.firstName.length >= 2 && setShowSuggest(true)}
+                  autoComplete="off" />
                 {showSuggest && suggestions.length > 0 && (
                   <div className="suggest">
                     {suggestions.map((s) => (
@@ -335,8 +361,10 @@ export function NewContract() {
                 )}
               </div>
               <div className="field">
-                <label>Jméno *</label>
-                <input value={customer.firstName} onChange={(e) => upd({ firstName: e.target.value })} />
+                <label>Příjmení *</label>
+                <input value={customer.lastName}
+                  onChange={(e) => { upd({ lastName: e.target.value }); refreshSuggestions(e.target.value); setShowSuggest(true) }}
+                  autoComplete="off" />
               </div>
               <div className={`field ${customer.identifier && !idValid ? 'err' : ''}`}>
                 <label>Identifikátor (RČ / číslo OP) *</label>
@@ -358,32 +386,10 @@ export function NewContract() {
               </div>
               <p className="note" style={{ marginTop: 10 }}>PDF se po podpisu automaticky odešle zákazníkovi i majiteli půjčovny.</p>
             </div>
-
-            <div className="card">
-              <h2>Foto dokladů</h2>
-              <div className="photo-grid">
-                {DOC_FIELDS.map((f) => (
-                  <PhotoInput key={f.kind} kind={f.kind} label={f.label} blob={docPhotos[f.kind]}
-                    onCapture={(k, b) => setDocPhotos((p) => ({ ...p, [k]: b }))}
-                    onRemove={(k) => setDocPhotos((p) => { const n = { ...p }; delete n[k]; return n })} />
-                ))}
-              </div>
-              <button
-                type="button"
-                className="btn ghost"
-                style={{ marginTop: 12 }}
-                disabled={ocrBusy || (!docPhotos.idFront && !docPhotos.licenseFront)}
-                onClick={runOcr}
-              >
-                {ocrBusy ? <><span className="spin">⏳</span> Načítám z fotky…</> : '✨ Načíst údaje z fotky dokladu'}
-              </button>
-              {ocrMsg && <div className="note" style={{ marginTop: 8 }}>{ocrMsg}</div>}
-              <p className="note" style={{ marginTop: 10 }}>Vyfoť občanku, klikni „Načíst z fotky" – doplní jméno, příjmení a rodné číslo (můžeš opravit). Foto se přiloží ke smlouvě.</p>
-            </div>
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <div>
             <div className="card">
               <h2>Rekapitulace</h2>
@@ -422,7 +428,13 @@ export function NewContract() {
 
       <div className="bottombar stack">
         <button className="btn primary" onClick={next} disabled={!canNext || saving}>
-          {saving ? <><span className="spin">⏳</span> {status}</> : step === STEPS.length - 1 ? 'Vytvořit a odeslat' : 'Pokračovat'}
+          {saving
+            ? <><span className="spin">⏳</span> {status}</>
+            : step === STEPS.length - 1
+              ? 'Vytvořit a odeslat'
+              : step === 1 && carPhotos.length === 0
+                ? 'Přeskočit'
+                : 'Pokračovat'}
         </button>
         {step > 0 && <button className="btn ghost small" onClick={back} disabled={saving}>Zpět</button>}
       </div>

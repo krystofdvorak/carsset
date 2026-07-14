@@ -166,9 +166,11 @@ export function ContractDetail() {
         ) : (
           <button className="btn ghost" style={{ marginBottom: 10 }} onClick={undoReturned}>Zrušit označení vrácení</button>
         )}
-        <button className="btn primary" style={{ marginBottom: 10 }} onClick={openPdf} disabled={busy}>📄 Otevřít PDF</button>
-        <button className="btn ghost" style={{ marginBottom: 10 }} onClick={resend} disabled={busy}>📧 Odeslat klientovi znovu</button>
         <button className="btn block-danger" onClick={remove}>Smazat smlouvu</button>
+
+        <div className="divider" />
+        <button className="btn small" style={{ marginBottom: 8 }} onClick={openPdf} disabled={busy}>Otevřít PDF</button>
+        <button className="btn small" onClick={resend} disabled={busy}>Odeslat klientovi znovu</button>
         </div>
 
         <div className="detail-preview">
