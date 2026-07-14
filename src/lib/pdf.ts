@@ -109,6 +109,7 @@ async function buildDocDefinition(c: PdfData): Promise<TDocumentDefinitions> {
       ],
     },
     { text: 'SMLOUVA O NÁJMU DOPRAVNÍHO PROSTŘEDKU', style: 'h1', margin: [0, 6, 0, 2] },
+    { text: `Číslo smlouvy: ${c.number}`, bold: true, fontSize: 11, color: RED, margin: [0, 0, 0, 2] },
     {
       text: 'uzavřená dle § 2321 a násl. zákona č. 89/2012 Sb., občanský zákoník',
       style: 'sub',

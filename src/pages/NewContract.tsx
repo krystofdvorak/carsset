@@ -45,6 +45,7 @@ export function NewContract() {
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string>()
+  const [contractNo, setContractNo] = useState('')
   const [docPhotos, setDocPhotos] = useState<Partial<Record<PhotoKind, Blob>>>({})
   const [carPhotos, setCarPhotos] = useState<Blob[]>([])
   const [ocrBusy, setOcrBusy] = useState(false)
@@ -132,6 +133,18 @@ export function NewContract() {
     return () => { alive = false }
   }, [carId, rentalStart, rentalEnd, endAfterStart])
 
+  // přidělení reálného čísla smlouvy při vstupu na krok Podpis (aby ho měl i náhled)
+  useEffect(() => {
+    if (step !== 4 || contractNo) return
+    listContracts()
+      .then((all) => {
+        const year = new Date().getFullYear()
+        const n = all.filter((c) => new Date(c.createdAt).getFullYear() === year).length
+        setContractNo(contractNumber(n, year))
+      })
+      .catch(() => {})
+  }, [step, contractNo])
+
   // náhled smlouvy na kroku Podpis – klient si ji přečte ještě před podepsáním
   useEffect(() => {
     if (step !== 4 || !car) return
@@ -139,7 +152,7 @@ export function NewContract() {
     let cancelled = false
     const t = setTimeout(async () => {
       const draft: PdfData = {
-        number: 'náhled', createdAt: Date.now(),
+        number: contractNo || '…', createdAt: Date.now(),
         carName: car.name, carType: car.type, price, deposit,
         depositPaid, antiradar, rentalStart, rentalEnd, customer,
         photos: collectPhotos(), signature: '',
@@ -151,7 +164,7 @@ export function NewContract() {
     }, 350)
     return () => { cancelled = true; clearTimeout(t); if (url) URL.revokeObjectURL(url) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, carId, rentalStart, rentalEnd, price, deposit, depositPaid, antiradar, customer, docPhotos, carPhotos])
+  }, [step, carId, rentalStart, rentalEnd, price, deposit, depositPaid, antiradar, customer, docPhotos, carPhotos, contractNo])
 
   // našeptávání klientů podle příjmení / jména / identifikátoru
   async function refreshSuggestions(q: string) {
@@ -186,7 +199,7 @@ export function NewContract() {
       const year = new Date().getFullYear()
       const all = await listContracts()
       const countThisYear = all.filter((c) => new Date(c.createdAt).getFullYear() === year).length
-      const number = contractNumber(countThisYear, year)
+      const number = contractNo || contractNumber(countThisYear, year)
       const photos = collectPhotos()
 
       const pdfData: PdfData = {
