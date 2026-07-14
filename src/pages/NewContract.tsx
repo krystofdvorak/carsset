@@ -104,16 +104,24 @@ export function NewContract() {
     .sort((a, b) => a.prices.p24 - b.prices.p24)
   const car = carById(cars, carId)
   const basePriceNum = basePrice === '' ? 0 : basePrice
-  const antiradarFee = antiradar ? ANTIRADAR_PRICE : 0
-  const price = basePriceNum + antiradarFee
+  // cena v políčku už zahrnuje antiradar (přičítá se přímo do částky)
+  const price = basePriceNum
   const deposit = car?.deposit ?? 0
   const endAfterStart = new Date(rentalEnd).getTime() > new Date(rentalStart).getTime()
 
   const upd = (patch: Partial<Customer>) => setCustomer((c) => ({ ...c, ...patch }))
 
-  function selectCar(id: string, suggestedPrice: number) {
+  function selectCar(id: string) {
     setCarId(id)
-    setBasePrice((p) => (p === '' ? suggestedPrice : p)) // předvyplní návrhem, jde přepsat
+  }
+
+  // přepnutí antiradaru přičte/odečte 500 Kč přímo do částky za nájem
+  function toggleAntiradar(v: boolean) {
+    setAntiradar(v)
+    setBasePrice((p) => {
+      const n = p === '' ? 0 : p
+      return Math.max(0, n + (v ? ANTIRADAR_PRICE : -ANTIRADAR_PRICE))
+    })
   }
 
   // hlídání překrytí rezervací
@@ -241,13 +249,12 @@ export function NewContract() {
             </div>
             <div className="car-grid">
             {filtered.map((c) => (
-              <button key={c.id} className={`car ${carId === c.id ? 'selected' : ''}`} onClick={() => selectCar(c.id, c.prices.p24)}>
+              <button key={c.id} className={`car ${carId === c.id ? 'selected' : ''}`} onClick={() => selectCar(c.id)}>
                 <span className="emoji">{c.type === 'dodavka' ? '🚐' : '🏎️'}</span>
                 <span className="info">
                   <div className="name">{c.name}</div>
                   <div className="meta">kauce {fmtCZK(c.deposit)}</div>
                 </span>
-                <span className="price"><small>od</small>{fmtCZK(c.prices.p24)}</span>
               </button>
             ))}
             </div>
@@ -280,10 +287,9 @@ export function NewContract() {
                   inputMode="numeric"
                   value={basePrice}
                   onChange={(e) => setBasePrice(e.target.value === '' ? '' : Number(e.target.value))}
-                  placeholder="např. 4000"
+                  placeholder="Kč"
                 />
               </div>
-              {car && <p className="note" style={{ marginTop: 10 }}>Návrh dle ceníku {car.name}: 24 h = {fmtCZK(car.prices.p24)}. Můžeš přepsat.</p>}
             </div>
 
             <div className="card">
@@ -302,7 +308,7 @@ export function NewContract() {
 
             <div className="card">
               <h2>Doplňky</h2>
-              <Switch checked={antiradar} onChange={setAntiradar} label="Půjčuje si antiradar" sub={`Příplatek + ${fmtCZK(ANTIRADAR_PRICE)}`} />
+              <Switch checked={antiradar} onChange={toggleAntiradar} label="Půjčuje si antiradar" sub={`Přičte + ${fmtCZK(ANTIRADAR_PRICE)} do částky`} />
             </div>
           </div>
         )}
@@ -384,7 +390,7 @@ export function NewContract() {
               <div className="summary-row"><span className="k">Vozidlo</span><span className="v">{car?.name}</span></div>
               <div className="summary-row"><span className="k">Nájemce</span><span className="v">{customer.firstName} {customer.lastName}</span></div>
               <div className="summary-row"><span className="k">Termín</span><span className="v">{fmtDateTime(rentalStart)} → {fmtDateTime(rentalEnd)}</span></div>
-              <div className="summary-row"><span className="k">Nájem</span><span className="v">{fmtCZK(basePriceNum)}</span></div>
+              <div className="summary-row"><span className="k">Nájem</span><span className="v">{fmtCZK(antiradar ? price - ANTIRADAR_PRICE : price)}</span></div>
               <div className="summary-row"><span className="k">Antiradar</span><span className="v">{antiradar ? `Ano · +${fmtCZK(ANTIRADAR_PRICE)}` : 'Ne'}</span></div>
               <div className="summary-row"><span className="k">Kauce</span><span className="v">{fmtCZK(deposit)} · {depositPaid ? 'uhrazena' : 'neuhrazena'}</span></div>
               <div className="summary-total"><span className="k">Cena celkem</span><span className="amount">{fmtCZK(price)}</span></div>
