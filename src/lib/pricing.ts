@@ -1,5 +1,8 @@
 import type { Car, PriceTier } from '../data/cars'
 
+/** Příplatek za zapůjčení antiradaru (Kč). */
+export const ANTIRADAR_PRICE = 500
+
 /** Víkendový začátek nájmu = pátek / sobota / neděle (tarif pá–po). */
 export function isWeekendStart(startLocal: string): boolean {
   if (!startLocal) return false

@@ -133,6 +133,9 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 }
 .bottombar .btn { flex: 1; }
 .bottombar .btn.ghost { flex: 0 0 auto; padding: 0 20px; }
+.bottombar.stack { flex-direction: column; gap: 8px; }
+.bottombar.stack .btn { width: 100%; flex: none; }
+.btn.small { min-height: 40px; font-size: 14px; background: transparent; border: 1px solid var(--line); color: var(--muted); }
 
 .steps { display: flex; gap: 6px; padding: 0 16px 10px; }
 .steps .dot { flex: 1; height: 4px; border-radius: 999px; background: var(--line); }
@@ -147,16 +150,18 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
   display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
   background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 10px; color: var(--text);
 }
-.list-item.overdue { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, var(--surface)); }
-.list-item.returned { opacity: 0.6; }
+.list-item.st-orange { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, var(--surface)); }
+.list-item.st-red { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, var(--surface)); }
+.list-item.st-returned { opacity: 0.6; }
 .list-item .li-emoji { font-size: 24px; }
 .list-item .li-main { flex: 1; min-width: 0; }
 .list-item .li-name { font-weight: 650; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list-item .li-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
 .li-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-top: 5px; }
-.li-tag.overdue { background: var(--warn); color: #3a2400; }
+.li-tag.green { background: color-mix(in srgb, var(--ok) 22%, transparent); color: var(--ok); }
+.li-tag.orange { background: var(--warn); color: #3a2400; }
+.li-tag.red { background: var(--accent); color: #fff; }
 .li-tag.returned { background: color-mix(in srgb, var(--ok) 25%, transparent); color: var(--ok); }
-.li-tag.active { background: color-mix(in srgb, var(--accent) 22%, transparent); color: #fca5a5; }
 
 .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
 .empty .big { font-size: 46px; margin-bottom: 12px; }

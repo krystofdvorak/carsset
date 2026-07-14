@@ -4,7 +4,8 @@ import { db, type Contract } from '../db/db'
 import { fmtCZK, fmtDateTime, carEmoji } from '../lib/format'
 import { generatePdfBlob } from '../lib/pdf'
 import { sendContractEmail } from '../lib/email'
-import { isOverdue } from './Home'
+import { contractStatus } from '../lib/status'
+import { ANTIRADAR_PRICE } from '../lib/pricing'
 
 export function ContractDetail() {
   const { id } = useParams()
@@ -46,7 +47,9 @@ export function ContractDetail() {
   )
 
   const contract = c
-  const over = isOverdue(contract)
+  const st = contractStatus(contract)
+  const antiradarFee = contract.antiradar ? ANTIRADAR_PRICE : 0
+  const base = contract.price - antiradarFee
 
   async function getPdf(): Promise<Blob> {
     if (contract.pdf) return contract.pdf
@@ -111,7 +114,8 @@ export function ContractDetail() {
       </header>
 
       <main className="content">
-        {over && <div className="banner warn">⚠ Termín skončil {fmtDateTime(contract.rentalEnd)} a auto zatím není označené jako vrácené.</div>}
+        {st.kind === 'red' && <div className="banner err">⚠ Termín skončil {fmtDateTime(contract.rentalEnd)} a auto stále není označené jako vrácené.</div>}
+        {st.kind === 'orange' && <div className="banner warn">⏳ Blíží se konec nájmu ({fmtDateTime(contract.rentalEnd)}). Nezapomeň po vrácení odkliknout.</div>}
         {contract.returned && <div className="banner ok">✓ Auto vráceno v pořádku{contract.returnedAt ? ` · ${new Date(contract.returnedAt).toLocaleString('cs-CZ')}` : ''}.</div>}
 
         <div className="card">
@@ -132,9 +136,10 @@ export function ContractDetail() {
           <h2>Nájem</h2>
           <div className="summary-row"><span className="k">Od</span><span className="v">{fmtDateTime(contract.rentalStart)}</span></div>
           <div className="summary-row"><span className="k">Do</span><span className="v">{fmtDateTime(contract.rentalEnd)}</span></div>
-          <div className="summary-row"><span className="k">Antiradar</span><span className="v">{contract.antiradar ? 'Ano' : 'Ne'}</span></div>
+          <div className="summary-row"><span className="k">Nájem</span><span className="v">{fmtCZK(base)}</span></div>
+          <div className="summary-row"><span className="k">Antiradar</span><span className="v">{contract.antiradar ? `Ano · +${fmtCZK(ANTIRADAR_PRICE)}` : 'Ne'}</span></div>
           <div className="summary-row"><span className="k">Kauce</span><span className="v">{fmtCZK(contract.deposit)} · {contract.depositPaid ? 'uhrazena' : 'neuhrazena'}</span></div>
-          <div className="summary-total"><span className="k">Cena</span><span className="amount">{fmtCZK(contract.price)}</span></div>
+          <div className="summary-total"><span className="k">Cena celkem</span><span className="amount">{fmtCZK(contract.price)}</span></div>
         </div>
 
         {contract.emailSentTo && contract.emailSentTo.length > 0 && (

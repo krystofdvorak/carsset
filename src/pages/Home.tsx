@@ -1,13 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, type Contract } from '../db/db'
+import { db } from '../db/db'
 import { fmtCZK, fmtDateTime, carEmoji } from '../lib/format'
-
-export function isOverdue(c: Contract): boolean {
-  if (c.returned) return false
-  const end = new Date(c.rentalEnd).getTime()
-  return !isNaN(end) && Date.now() > end
-}
+import { contractStatus } from '../lib/status'
 
 export function Home() {
   const nav = useNavigate()
@@ -16,9 +11,9 @@ export function Home() {
   return (
     <div className="app">
       <header className="topbar">
-        <img src="/logo.svg" alt="Carsset" className="brand-logo" />
+        <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="Carsset" className="brand-logo" />
         <div style={{ flex: 1 }} />
-        <button className="icon-btn" onClick={() => nav('/auta')}>＋ Auto</button>
+        <button className="icon-btn" onClick={() => nav('/auta')}>＋ Nový vůz do nabídky</button>
       </header>
 
       <main className="content">
@@ -31,25 +26,15 @@ export function Home() {
           </div>
         ) : (
           contracts.map((c) => {
-            const over = isOverdue(c)
+            const st = contractStatus(c)
             return (
-              <button
-                key={c.id}
-                className={`list-item ${over ? 'overdue' : ''} ${c.returned ? 'returned' : ''}`}
-                onClick={() => nav(`/smlouva/${c.id}`)}
-              >
+              <button key={c.id} className={`list-item st-${st.kind}`} onClick={() => nav(`/smlouva/${c.id}`)}>
                 <span className="li-emoji">{carEmoji(c.carType)}</span>
                 <span className="li-main">
                   <div className="li-name">{c.customer.firstName} {c.customer.lastName || '(bez jména)'}</div>
                   <div className="li-meta">{c.carName} · {fmtDateTime(c.rentalStart)}</div>
                   <div className="li-meta">č. {c.number} · {fmtCZK(c.price)}</div>
-                  {c.returned ? (
-                    <span className="li-tag returned">✓ Vráceno</span>
-                  ) : over ? (
-                    <span className="li-tag overdue">⚠ Po termínu – nevráceno</span>
-                  ) : (
-                    <span className="li-tag active">Aktivní · do {fmtDateTime(c.rentalEnd)}</span>
-                  )}
+                  <span className={`li-tag ${st.kind}`}>{st.label}</span>
                 </span>
                 <span style={{ color: 'var(--muted)', fontSize: 22 }}>›</span>
               </button>

@@ -4,6 +4,7 @@ import type { TDocumentDefinitions, Content } from 'pdfmake/interfaces'
 import type { Contract } from '../db/db'
 import { TIERS } from '../data/cars'
 import { fmtCZK, fmtDateTime } from './format'
+import { ANTIRADAR_PRICE } from './pricing'
 
 ;(pdfMake as unknown as { vfs: unknown }).vfs =
   (pdfFonts as unknown as { vfs?: unknown; default?: unknown }).vfs ??
@@ -119,7 +120,9 @@ function buildDocDefinition(c: Contract): TDocumentDefinitions {
     labelValue('Začátek nájmu', fmtDateTime(c.rentalStart)),
     labelValue('Konec nájmu', fmtDateTime(c.rentalEnd)),
     labelValue('Tarif', tier?.label ?? c.tier),
-    labelValue('Cena nájmu', fmtCZK(c.price)),
+    labelValue('Cena nájmu', fmtCZK(c.price - (c.antiradar ? ANTIRADAR_PRICE : 0))),
+    ...(c.antiradar ? [labelValue('Antiradar', `+ ${fmtCZK(ANTIRADAR_PRICE)}`)] : []),
+    labelValue('Cena celkem', fmtCZK(c.price)),
     labelValue('Vratná kauce', fmtCZK(c.deposit)),
 
     { text: '4. Doplňky a kontrola', style: 'h2', margin: [0, 10, 0, 4] },

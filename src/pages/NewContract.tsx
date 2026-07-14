@@ -7,7 +7,7 @@ import { SignaturePad, type SignaturePadHandle } from '../components/SignaturePa
 import { Switch } from '../components/Switch'
 import { generatePdfBlob } from '../lib/pdf'
 import { sendContractEmail } from '../lib/email'
-import { priceFor, computeEnd, isWeekendStart, is72Allowed, nowLocal } from '../lib/pricing'
+import { priceFor, computeEnd, isWeekendStart, is72Allowed, nowLocal, ANTIRADAR_PRICE } from '../lib/pricing'
 import { findConflict } from '../lib/overlap'
 import { fmtCZK, fmtDateTime, contractNumber } from '../lib/format'
 
@@ -32,12 +32,16 @@ export function NewContract() {
   const [status, setStatus] = useState('')
   const sigRef = useRef<SignaturePadHandle>(null)
 
-  const filtered = cars.filter((c) => c.type === type)
+  const minPrice = (c: (typeof cars)[number]) =>
+    Math.min(c.prices.p5, c.prices.p10, c.prices.p24, c.prices.p24w, c.prices.p72)
+  const filtered = cars.filter((c) => c.type === type).sort((a, b) => minPrice(a) - minPrice(b))
   const car = carById(cars, carId)
   const weekend = isWeekendStart(rentalStart)
   const allow72 = is72Allowed(rentalStart)
   const tier72Invalid = tier === '72h' && !allow72
-  const price = car && tier ? priceFor(car, tier, rentalStart) : 0
+  const basePrice = car && tier ? priceFor(car, tier, rentalStart) : 0
+  const antiradarFee = antiradar ? ANTIRADAR_PRICE : 0
+  const price = basePrice + antiradarFee
   const deposit = car?.deposit ?? 0
   const rentalEnd = useMemo(() => (tier ? computeEnd(rentalStart, tier) : ''), [rentalStart, tier])
 
@@ -166,9 +170,9 @@ export function NewContract() {
                 <span className="emoji">{c.type === 'dodavka' ? '🚐' : '🏎️'}</span>
                 <span className="info">
                   <div className="name">{c.name}</div>
-                  <div className="meta">{c.seeded ? 'Carsset' : 'vlastní'} · kauce {fmtCZK(c.deposit)}</div>
+                  <div className="meta">kauce {fmtCZK(c.deposit)}</div>
                 </span>
-                <span className="price">{fmtCZK(c.prices.p24)}<small>/ 24 h</small></span>
+                <span className="price"><small>od</small>{fmtCZK(minPrice(c))}</span>
               </button>
             ))}
           </div>
@@ -218,7 +222,7 @@ export function NewContract() {
 
             <div className="card">
               <h2>Doplňky</h2>
-              <Switch checked={antiradar} onChange={setAntiradar} label="Půjčuje si antiradar" sub="Zaznamená se do smlouvy" />
+              <Switch checked={antiradar} onChange={setAntiradar} label="Půjčuje si antiradar" sub={`Příplatek + ${fmtCZK(ANTIRADAR_PRICE)}`} />
               <Switch checked={depositPaid} onChange={setDepositPaid} label="Kauce uhrazena" sub={`Vratná kauce ${car ? fmtCZK(deposit) : '—'}`} />
             </div>
           </div>
@@ -276,9 +280,10 @@ export function NewContract() {
               <div className="summary-row"><span className="k">Vozidlo</span><span className="v">{car?.name}</span></div>
               <div className="summary-row"><span className="k">Nájemce</span><span className="v">{customer.firstName} {customer.lastName}</span></div>
               <div className="summary-row"><span className="k">Termín</span><span className="v">{fmtDateTime(rentalStart)} → {fmtDateTime(rentalEnd)}</span></div>
-              <div className="summary-row"><span className="k">Antiradar</span><span className="v">{antiradar ? 'Ano' : 'Ne'}</span></div>
+              <div className="summary-row"><span className="k">Nájem</span><span className="v">{fmtCZK(basePrice)}</span></div>
+              <div className="summary-row"><span className="k">Antiradar</span><span className="v">{antiradar ? `Ano · +${fmtCZK(ANTIRADAR_PRICE)}` : 'Ne'}</span></div>
               <div className="summary-row"><span className="k">Kauce</span><span className="v">{fmtCZK(deposit)} · {depositPaid ? 'uhrazena' : 'neuhrazena'}</span></div>
-              <div className="summary-total"><span className="k">Cena</span><span className="amount">{fmtCZK(price)}</span></div>
+              <div className="summary-total"><span className="k">Cena celkem</span><span className="amount">{fmtCZK(price)}</span></div>
             </div>
             <div className="card">
               <h2>Podpis nájemce</h2>
@@ -291,11 +296,11 @@ export function NewContract() {
         )}
       </main>
 
-      <div className="bottombar">
-        {step > 0 && <button className="btn ghost" onClick={back} disabled={saving}>Zpět</button>}
+      <div className="bottombar stack">
         <button className="btn primary" onClick={next} disabled={!canNext || saving}>
           {saving ? <><span className="spin">⏳</span> {status}</> : step === STEPS.length - 1 ? 'Vytvořit a odeslat' : 'Pokračovat'}
         </button>
+        {step > 0 && <button className="btn ghost small" onClick={back} disabled={saving}>Zpět</button>}
       </div>
     </div>
   )
