@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { PhotoKind } from '../db/db'
+import type { PhotoKind } from '../lib/types'
 import { compressPhoto } from '../lib/image'
 
 interface Props {

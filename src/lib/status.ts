@@ -1,4 +1,4 @@
-import type { Contract } from '../db/db'
+import type { Contract } from './types'
 import { fmtDateTime } from './format'
 
 export type StatusKind = 'returned' | 'green' | 'orange' | 'red'

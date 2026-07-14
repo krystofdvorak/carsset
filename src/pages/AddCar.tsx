@@ -1,14 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../db/db'
+import { listUserCars, addUserCar, deleteUserCar } from '../lib/store'
+import type { UserCar } from '../lib/types'
 import type { CarType } from '../data/cars'
 import { fmtCZK } from '../lib/format'
 import { BackButton } from '../components/BackButton'
 
 export function AddCar() {
   const nav = useNavigate()
-  const userCars = useLiveQuery(() => db.cars.orderBy('createdAt').reverse().toArray(), [])
+  const [userCars, setUserCars] = useState<UserCar[]>([])
+  const reload = () => listUserCars().then((r) => setUserCars(r.reverse())).catch(() => {})
+  useEffect(() => { reload() }, [])
   const [name, setName] = useState('')
   const [type, setType] = useState<CarType>('osobni')
   const [p5, setP5] = useState<number | ''>('')
@@ -24,20 +26,22 @@ export function AddCar() {
 
   async function save() {
     setSaving(true)
-    const id = `user-${crypto.randomUUID().slice(0, 8)}`
-    await db.cars.add({
-      id,
-      name: name.trim(),
-      type,
-      deposit: num(deposit),
-      createdAt: Date.now(),
-      prices: {
-        p5: num(p5), p10: num(p10), p24: num(p24),
-        p24w: num(p24w) || num(p24), p72: num(p72),
-      },
-    })
-    setName(''); setP5(''); setP10(''); setP24(''); setP24w(''); setP72(''); setDeposit(5000)
-    setSaving(false)
+    try {
+      await addUserCar({
+        id: `user-${crypto.randomUUID().slice(0, 8)}`,
+        name: name.trim(),
+        type,
+        deposit: num(deposit),
+        prices: {
+          p5: num(p5), p10: num(p10), p24: num(p24),
+          p24w: num(p24w) || num(p24), p72: num(p72),
+        },
+      })
+      setName(''); setP5(''); setP10(''); setP24(''); setP24w(''); setP72(''); setDeposit(5000)
+      await reload()
+    } finally {
+      setSaving(false)
+    }
   }
 
   const priceField = (label: string, val: number | '', set: (n: number | '') => void) => (
@@ -95,7 +99,7 @@ export function AddCar() {
                 <span className="k">{c.type === 'dodavka' ? '🚐' : '🏎️'} {c.name}</span>
                 <span className="v" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   {fmtCZK(c.prices.p24)}/24h
-                  <button className="chip" onClick={() => db.cars.delete(c.id)}>Smazat</button>
+                  <button className="chip" onClick={async () => { await deleteUserCar(c.id); reload() }}>Smazat</button>
                 </span>
               </div>
             ))}

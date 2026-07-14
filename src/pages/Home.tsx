@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useLiveQuery } from 'dexie-react-hooks'
-import { db, type Contract } from '../db/db'
+import type { Contract } from '../lib/types'
+import { listContracts, signOut } from '../lib/store'
 import { fmtCZK, fmtDateTime, carEmoji } from '../lib/format'
 import { contractStatus } from '../lib/status'
 import { seedDemoContracts } from '../lib/seed'
@@ -22,12 +22,25 @@ export function Home() {
   const nav = useNavigate()
   const [seeding, setSeeding] = useState(false)
   const [query, setQuery] = useState('')
-  const contracts = useLiveQuery(() => db.contracts.orderBy('createdAt').reverse().toArray(), [])
+  const [contracts, setContracts] = useState<Contract[] | undefined>(undefined)
+
+  async function reload() {
+    try {
+      setContracts(await listContracts())
+    } catch {
+      setContracts([])
+    }
+  }
+  useEffect(() => { reload() }, [])
 
   async function seed() {
     setSeeding(true)
-    await seedDemoContracts(Date.now())
-    setSeeding(false)
+    try {
+      await seedDemoContracts(Date.now())
+      await reload()
+    } finally {
+      setSeeding(false)
+    }
   }
 
   const q = query.trim().toLowerCase()
@@ -68,6 +81,7 @@ export function Home() {
         <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="Carsset" className="brand-logo" />
         <div style={{ flex: 1 }} />
         <button className="icon-btn" onClick={() => nav('/auta')}>＋ Nový vůz do nabídky</button>
+        <button className="icon-btn" title="Odhlásit" onClick={() => signOut()} style={{ padding: '0 12px' }}>⎋</button>
       </header>
 
       <main className="content">

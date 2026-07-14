@@ -1,5 +1,5 @@
 import imageCompression from 'browser-image-compression'
-import type { PhotoKind } from '../db/db'
+import type { PhotoKind } from './types'
 
 // Doklady necháme ostřejší (čitelnost), fotky auta můžou být menší.
 function optionsFor(kind: PhotoKind) {

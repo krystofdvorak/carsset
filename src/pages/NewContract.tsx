@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { type CarType } from '../data/cars'
-import { db, emptyCustomer, upsertClient, type Client, type Customer, type Contract, type Photo, type PhotoKind } from '../db/db'
+import { emptyCustomer, type Client, type Customer, type PhotoBlob, type PhotoKind, type Contract } from '../lib/types'
+import { createContract, upsertClient, findConflict, searchClients, listContracts, setEmailSentTo } from '../lib/store'
 import { useCars, carById } from '../hooks/useCars'
 import { SignaturePad, type SignaturePadHandle } from '../components/SignaturePad'
 import { Switch } from '../components/Switch'
@@ -10,10 +11,9 @@ import { compressPhoto } from '../lib/image'
 import { BackButton } from '../components/BackButton'
 import { DateTimeField } from '../components/DateTimeField'
 import { isValidEmail, isValidPhone, isValidIdentifier } from '../lib/validate'
-import { generatePdfBlob } from '../lib/pdf'
+import { generatePdfBlob, type PdfData } from '../lib/pdf'
 import { sendContractEmail } from '../lib/email'
 import { nowLocal, ANTIRADAR_PRICE } from '../lib/pricing'
-import { findConflict } from '../lib/overlap'
 import { fmtCZK, fmtDateTime, contractNumber } from '../lib/format'
 
 const STEPS = ['Vozidlo', 'Termín a cena', 'Nájemce', 'Podpis'] as const
@@ -56,8 +56,8 @@ export function NewContract() {
     { kind: 'licenseBack', label: 'Řidičák – zadní' },
   ]
 
-  function collectPhotos(): Photo[] {
-    const out: Photo[] = []
+  function collectPhotos(): PhotoBlob[] {
+    const out: PhotoBlob[] = []
     for (const { kind } of DOC_FIELDS) {
       const b = docPhotos[kind]
       if (b) out.push({ kind, blob: b })
@@ -97,11 +97,11 @@ export function NewContract() {
     let url: string | undefined
     let cancelled = false
     const t = setTimeout(async () => {
-      const draft: Contract = {
-        id: 'draft', number: 'náhled', createdAt: Date.now(),
-        carId, carName: car.name, carType: car.type, price, deposit,
+      const draft: PdfData = {
+        number: 'náhled', createdAt: Date.now(),
+        carName: car.name, carType: car.type, price, deposit,
         depositPaid, antiradar, rentalStart, rentalEnd, customer,
-        photos: collectPhotos(), signature: '', returned: false,
+        photos: collectPhotos(), signature: '',
       }
       const pdf = await generatePdfBlob(draft)
       if (cancelled) return
@@ -112,20 +112,9 @@ export function NewContract() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, carId, rentalStart, rentalEnd, price, deposit, depositPaid, antiradar, customer, docPhotos, carPhotos])
 
-  // našeptávání klientů podle příjmení / identifikátoru
+  // našeptávání klientů podle příjmení / jména / identifikátoru
   async function refreshSuggestions(q: string) {
-    const query = q.trim().toLowerCase()
-    if (query.length < 2) { setSuggestions([]); return }
-    const all = await db.clients.toArray()
-    const match = all
-      .filter((c) =>
-        c.lastName.toLowerCase().includes(query) ||
-        c.firstName.toLowerCase().includes(query) ||
-        c.identifier.toLowerCase().includes(query),
-      )
-      .sort((a, b) => b.lastUsed - a.lastUsed)
-      .slice(0, 6)
-    setSuggestions(match)
+    setSuggestions(await searchClients(q))
   }
 
   function pickClient(c: Client) {
@@ -153,40 +142,32 @@ export function NewContract() {
     try {
       const signature = sigRef.current?.toDataURL() ?? ''
       const year = new Date().getFullYear()
-      const countThisYear = await db.contracts.filter((c) => new Date(c.createdAt).getFullYear() === year).count()
-      const id = crypto.randomUUID()
-      const now = Date.now()
-      const contract: Contract = {
-        id,
-        number: contractNumber(countThisYear, year),
-        createdAt: now,
-        carId,
-        carName: car.name,
-        carType: car.type,
-        price,
-        deposit,
-        depositPaid,
-        antiradar,
-        rentalStart,
-        rentalEnd,
-        customer,
-        photos: collectPhotos(),
-        signature,
-        returned: false,
+      const all = await listContracts()
+      const countThisYear = all.filter((c) => new Date(c.createdAt).getFullYear() === year).length
+      const number = contractNumber(countThisYear, year)
+      const photos = collectPhotos()
+
+      const pdfData: PdfData = {
+        number, createdAt: Date.now(), carName: car.name, carType: car.type,
+        price, deposit, depositPaid, antiradar, rentalStart, rentalEnd, customer, signature, photos,
       }
-      const pdf = await generatePdfBlob(contract)
-      contract.pdf = pdf
-      await db.contracts.add(contract)
-      await upsertClient(customer, now)
+      const pdf = await generatePdfBlob(pdfData)
+
+      setStatus('Ukládám…')
+      const id = await createContract({
+        number, carId, carName: car.name, carType: car.type,
+        price, deposit, depositPaid, antiradar, rentalStart, rentalEnd, customer, signature, photos, pdf,
+      })
+      await upsertClient(customer)
 
       setStatus('Odesílám e-mail…')
       const sent = await sendContractEmail(pdf, {
-        contractNumber: contract.number,
+        contractNumber: number,
         customerEmail: customer.email,
         customerName: `${customer.firstName} ${customer.lastName}`.trim(),
       })
       if (sent.ok && sent.mode === 'api') {
-        await db.contracts.update(id, { emailSentTo: sent.recipients })
+        await setEmailSentTo(id, sent.recipients)
       }
       nav(`/smlouva/${id}`, { replace: true, state: { emailMode: sent.mode, recipients: sent.recipients } })
     } catch (e) {

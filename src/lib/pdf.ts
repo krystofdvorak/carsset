@@ -1,7 +1,7 @@
 import pdfMake from 'pdfmake/build/pdfmake'
 import pdfFonts from 'pdfmake/build/vfs_fonts'
 import type { TDocumentDefinitions, Content } from 'pdfmake/interfaces'
-import type { Contract } from '../db/db'
+import type { Customer, PhotoBlob } from './types'
 import { fmtCZK, fmtDateTime } from './format'
 import { ANTIRADAR_PRICE } from './pricing'
 
@@ -11,6 +11,23 @@ import { ANTIRADAR_PRICE } from './pricing'
   pdfFonts
 
 const RED = '#ef0001'
+
+/** Data pro vygenerování PDF (fotky jako bloby v paměti). */
+export interface PdfData {
+  number: string
+  createdAt: number
+  carName: string
+  carType: 'osobni' | 'dodavka'
+  price: number
+  deposit: number
+  depositPaid: boolean
+  antiradar: boolean
+  rentalStart: string
+  rentalEnd: string
+  customer: Customer
+  signature: string
+  photos: PhotoBlob[]
+}
 
 // Údaje pronajímatele – Carsset (uprav dle reálných firemních údajů)
 export const LESSOR = {
@@ -71,7 +88,7 @@ function checkbox(label: string, checked: boolean): Content {
   }
 }
 
-async function buildDocDefinition(c: Contract): Promise<TDocumentDefinitions> {
+async function buildDocDefinition(c: PdfData): Promise<TDocumentDefinitions> {
   const cust = c.customer
   const fullName = `${cust.firstName} ${cust.lastName}`.trim() || '—'
 
@@ -207,7 +224,7 @@ async function buildDocDefinition(c: Contract): Promise<TDocumentDefinitions> {
   }
 }
 
-export async function generatePdfBlob(c: Contract): Promise<Blob> {
+export async function generatePdfBlob(c: PdfData): Promise<Blob> {
   const def = await buildDocDefinition(c)
   return new Promise((resolve) => {
     ;(pdfMake.createPdf(def) as unknown as {

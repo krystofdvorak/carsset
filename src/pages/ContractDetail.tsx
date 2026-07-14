@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
-import { db, type Contract } from '../db/db'
+import type { Contract } from '../lib/types'
+import { getContract, markReturned as apiMarkReturned, deleteContract, setEmailSentTo, signedUrl, downloadBlob } from '../lib/store'
 import { fmtCZK, fmtDateTime, carEmoji } from '../lib/format'
-import { generatePdfBlob } from '../lib/pdf'
 import { sendContractEmail } from '../lib/email'
 import { contractStatus } from '../lib/status'
 import { ANTIRADAR_PRICE } from '../lib/pricing'
@@ -19,26 +19,21 @@ export function ContractDetail() {
 
   async function reload() {
     if (!id) return
-    setC((await db.contracts.get(id)) ?? null)
+    setC((await getContract(id)) ?? null)
   }
   useEffect(() => { reload() }, [id])
 
-  // náhled smlouvy (PDF) do iframe
+  // náhled smlouvy (podepsané PDF ze Storage)
   useEffect(() => {
-    let revoked = false
-    let url: string | undefined
+    let alive = true
     ;(async () => {
-      if (!id) return
-      const rec = await db.contracts.get(id)
-      if (!rec) return
-      const pdf = rec.pdf ?? (await generatePdfBlob(rec))
-      if (!rec.pdf) await db.contracts.update(id, { pdf })
-      if (revoked) return
-      url = URL.createObjectURL(pdf)
-      setPdfUrl(url)
+      if (!c || c === null) return
+      if (!c.pdfPath) return
+      const url = await signedUrl(c.pdfPath)
+      if (alive) setPdfUrl(url)
     })()
-    return () => { revoked = true; if (url) URL.revokeObjectURL(url) }
-  }, [id])
+    return () => { alive = false }
+  }, [c])
 
   function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 4500) }
 
@@ -49,8 +44,7 @@ export function ContractDetail() {
     const msg: Record<string, string> = {
       api: `✓ Smlouva odeslána e-mailem: ${(st.recipients || []).join(', ')}`,
       share: 'Smlouva připravena – vyber Mail/aplikaci a odešli zákazníkovi i majiteli',
-      download: 'PDF staženo. Auto-odesílání e-mailem zapneš nasazením serverless funkce (viz README).',
-      failed: 'E-mail se nepodařilo odeslat – zkus „Odeslat / sdílet znovu".',
+      failed: 'Auto-odeslání zatím není nakonfigurováno (mailing tool). PDF je uložené, pošli přes „Odeslat klientovi znovu".',
     }
     if (msg[st.emailMode]) flash(msg[st.emailMode])
     nav(location.pathname, { replace: true, state: null })
@@ -70,55 +64,46 @@ export function ContractDetail() {
   const antiradarFee = contract.antiradar ? ANTIRADAR_PRICE : 0
   const base = contract.price - antiradarFee
 
-  async function getPdf(): Promise<Blob> {
-    if (contract.pdf) return contract.pdf
-    const pdf = await generatePdfBlob(contract)
-    await db.contracts.update(contract.id, { pdf })
-    return pdf
-  }
-
   async function openPdf() {
-    setBusy(true)
-    try {
-      const url = URL.createObjectURL(await getPdf())
-      window.open(url, '_blank')
-      setTimeout(() => URL.revokeObjectURL(url), 60000)
-    } finally { setBusy(false) }
+    if (!contract.pdfPath) { flash('PDF není k dispozici'); return }
+    const url = await signedUrl(contract.pdfPath)
+    if (url) window.open(url, '_blank')
   }
 
   async function resend() {
+    if (!contract.pdfPath) { flash('PDF není k dispozici'); return }
     setBusy(true)
     try {
-      const pdf = await getPdf()
+      const pdf = await downloadBlob(contract.pdfPath)
+      if (!pdf) { flash('PDF se nepodařilo načíst'); return }
       const sent = await sendContractEmail(pdf, {
         contractNumber: contract.number,
         customerEmail: contract.customer.email,
         customerName: `${contract.customer.firstName} ${contract.customer.lastName}`.trim(),
       })
-      const msg = {
+      const msg: Record<string, string> = {
         api: `Odesláno na ${sent.recipients.join(', ')}`,
         share: 'Otevřeno sdílení – vyber Mail a odešli',
-        download: 'PDF staženo (e-mail není nakonfigurován)',
-        failed: 'Odeslání se nezdařilo',
-      }[sent.mode]
-      if (sent.ok && sent.mode === 'api') await db.contracts.update(contract.id, { emailSentTo: sent.recipients })
-      flash(msg)
+        failed: 'Auto-odeslání zatím nenakonfigurováno (mailing tool).',
+      }
+      if (sent.ok && sent.mode === 'api') await setEmailSentTo(contract.id, sent.recipients)
+      flash(msg[sent.mode] ?? '')
     } finally { setBusy(false) }
   }
 
   async function markReturned() {
-    await db.contracts.update(contract.id, { returned: true, returnedAt: Date.now() })
+    await apiMarkReturned(contract.id, true)
     flash('Označeno jako vrácené ✓')
     reload()
   }
   async function undoReturned() {
-    await db.contracts.update(contract.id, { returned: false, returnedAt: undefined })
+    await apiMarkReturned(contract.id, false)
     reload()
   }
 
   async function remove() {
     if (!confirm('Opravdu smazat tuto smlouvu?')) return
-    await db.contracts.delete(contract.id)
+    await deleteContract(contract)
     nav('/', { replace: true })
   }
 
@@ -163,11 +148,11 @@ export function ContractDetail() {
           <div className="summary-total"><span className="k">Cena celkem</span><span className="amount">{fmtCZK(contract.price)}</span></div>
         </div>
 
-        {contract.photos && contract.photos.length > 0 && (
+        {contract.photos.length > 0 && (
           <div className="card">
             <h2>Fotky ({contract.photos.length})</h2>
             <div className="photo-grid">
-              {contract.photos.map((p, i) => <PhotoThumb key={i} blob={p.blob} />)}
+              {contract.photos.map((p, i) => <PhotoThumb key={i} path={p.path} />)}
             </div>
           </div>
         )}
@@ -181,7 +166,7 @@ export function ContractDetail() {
         ) : (
           <button className="btn ghost" style={{ marginBottom: 10 }} onClick={undoReturned}>Zrušit označení vrácení</button>
         )}
-        <button className="btn primary" style={{ marginBottom: 10 }} onClick={openPdf} disabled={busy}>{busy ? <span className="spin">⏳</span> : '📄'} Otevřít PDF</button>
+        <button className="btn primary" style={{ marginBottom: 10 }} onClick={openPdf} disabled={busy}>📄 Otevřít PDF</button>
         <button className="btn ghost" style={{ marginBottom: 10 }} onClick={resend} disabled={busy}>📧 Odeslat klientovi znovu</button>
         <button className="btn block-danger" onClick={remove}>Smazat smlouvu</button>
         </div>
@@ -205,12 +190,12 @@ export function ContractDetail() {
   )
 }
 
-function PhotoThumb({ blob }: { blob: Blob }) {
+function PhotoThumb({ path }: { path: string }) {
   const [url, setUrl] = useState<string>()
   useEffect(() => {
-    const u = URL.createObjectURL(blob)
-    setUrl(u)
-    return () => URL.revokeObjectURL(u)
-  }, [blob])
+    let alive = true
+    signedUrl(path).then((u) => { if (alive) setUrl(u) })
+    return () => { alive = false }
+  }, [path])
   return <div className="photo-preview">{url && <img src={url} alt="příloha" />}</div>
 }

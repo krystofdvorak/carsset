@@ -1,11 +1,17 @@
-import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../db/db'
+import { useEffect, useState } from 'react'
+import { listUserCars } from '../lib/store'
 import { CARS, type Car } from '../data/cars'
 
 /** Spojí přednastavená vozidla (kód) s vozidly přidanými uživatelem (DB). */
-export function useCars(): Car[] {
-  const userCars = useLiveQuery(() => db.cars.orderBy('createdAt').toArray(), [])
-  const added: Car[] = (userCars ?? []).map((c) => ({ ...c, seeded: false }))
+export function useCars(reloadKey = 0): Car[] {
+  const [added, setAdded] = useState<Car[]>([])
+  useEffect(() => {
+    let alive = true
+    listUserCars()
+      .then((rows) => { if (alive) setAdded(rows.map((c) => ({ ...c, seeded: false }))) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [reloadKey])
   return [...added, ...CARS]
 }
 
