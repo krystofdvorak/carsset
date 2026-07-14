@@ -189,3 +189,38 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 .note { font-size: 12px; color: var(--muted); line-height: 1.4; }
 .spin { display: inline-block; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* back-btn ikona vycentrovaná */
+.back-btn svg { display: block; }
+
+/* validace polí */
+.field.err input { border-color: var(--accent); }
+.field-err { color: #fca5a5; font-size: 12px; margin-top: 6px; }
+
+/* náhled PDF smlouvy */
+.pdf-frame { width: 100%; height: 62vh; min-height: 420px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.pdf-loading { height: 320px; display: grid; place-items: center; color: var(--muted); font-size: 30px; }
+
+/* gridy seznamů (mobil = 1 sloupec) */
+.list-grid, .car-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.list-grid .list-item, .car-grid .car { margin-bottom: 0; }
+
+/* ===== Desktop / širší obrazovky ===== */
+@media (min-width: 760px) {
+  .app { max-width: 920px; }
+  .content { padding: 24px 24px 150px; }
+  .topbar { padding-left: 24px; padding-right: 24px; }
+  .steps, .step-title { padding-left: 24px; padding-right: 24px; }
+
+  .list-grid, .car-grid { grid-template-columns: 1fr 1fr; }
+
+  .detail-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 16px; align-items: start; }
+  .detail-preview { position: sticky; top: 92px; }
+  .pdf-frame { height: calc(100vh - 230px); min-height: 540px; }
+
+  .bottombar { max-width: 920px; padding-left: 24px; padding-right: 24px; }
+  .bottombar.stack { align-items: center; }
+  .bottombar.stack .btn { width: 100%; max-width: 480px; }
+
+  .fab { right: calc(50vw - 444px); }
+}

@@ -6,6 +6,7 @@ import { generatePdfBlob } from '../lib/pdf'
 import { sendContractEmail } from '../lib/email'
 import { contractStatus } from '../lib/status'
 import { ANTIRADAR_PRICE } from '../lib/pricing'
+import { BackButton } from '../components/BackButton'
 
 export function ContractDetail() {
   const { id } = useParams()
@@ -14,12 +15,30 @@ export function ContractDetail() {
   const [c, setC] = useState<Contract | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState('')
+  const [pdfUrl, setPdfUrl] = useState<string>()
 
   async function reload() {
     if (!id) return
     setC((await db.contracts.get(id)) ?? null)
   }
   useEffect(() => { reload() }, [id])
+
+  // náhled smlouvy (PDF) do iframe
+  useEffect(() => {
+    let revoked = false
+    let url: string | undefined
+    ;(async () => {
+      if (!id) return
+      const rec = await db.contracts.get(id)
+      if (!rec) return
+      const pdf = rec.pdf ?? (await generatePdfBlob(rec))
+      if (!rec.pdf) await db.contracts.update(id, { pdf })
+      if (revoked) return
+      url = URL.createObjectURL(pdf)
+      setPdfUrl(url)
+    })()
+    return () => { revoked = true; if (url) URL.revokeObjectURL(url) }
+  }, [id])
 
   function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 4500) }
 
@@ -41,7 +60,7 @@ export function ContractDetail() {
   if (c === undefined) return <div className="app"><div className="empty"><span className="spin big">⏳</span></div></div>
   if (c === null) return (
     <div className="app">
-      <header className="topbar"><button className="back-btn" onClick={() => nav('/')}>‹</button><h1>Smlouva</h1></header>
+      <header className="topbar"><BackButton onClick={() => nav('/')} /><h1>Smlouva</h1></header>
       <div className="empty"><div className="big">🔍</div><p>Smlouva nenalezena.</p></div>
     </div>
   )
@@ -106,7 +125,7 @@ export function ContractDetail() {
   return (
     <div className="app">
       <header className="topbar">
-        <button className="back-btn" onClick={() => nav('/')}>‹</button>
+        <BackButton onClick={() => nav('/')} />
         <div style={{ flex: 1 }}>
           <h1>Smlouva č. {contract.number}</h1>
           <div className="sub">{new Date(contract.createdAt).toLocaleString('cs-CZ')}</div>
@@ -118,6 +137,8 @@ export function ContractDetail() {
         {st.kind === 'orange' && <div className="banner warn">⏳ Blíží se konec nájmu ({fmtDateTime(contract.rentalEnd)}). Nezapomeň po vrácení odkliknout.</div>}
         {contract.returned && <div className="banner ok">✓ Auto vráceno v pořádku{contract.returnedAt ? ` · ${new Date(contract.returnedAt).toLocaleString('cs-CZ')}` : ''}.</div>}
 
+        <div className="detail-grid">
+        <div className="detail-info">
         <div className="card">
           <h2>Vozidlo</h2>
           <div className="summary-row"><span className="k">{carEmoji(contract.carType)} Model</span><span className="v">{contract.carName}</span></div>
@@ -154,6 +175,20 @@ export function ContractDetail() {
         <button className="btn primary" style={{ marginBottom: 10 }} onClick={openPdf} disabled={busy}>{busy ? <span className="spin">⏳</span> : '📄'} Otevřít PDF</button>
         <button className="btn ghost" style={{ marginBottom: 10 }} onClick={resend} disabled={busy}>📧 Odeslat / sdílet znovu</button>
         <button className="btn block-danger" onClick={remove}>Smazat smlouvu</button>
+        </div>
+
+        <div className="detail-preview">
+          <div className="card" style={{ marginBottom: 0 }}>
+            <h2>Náhled smlouvy</h2>
+            {pdfUrl ? (
+              <iframe className="pdf-frame" src={pdfUrl} title="Náhled smlouvy" />
+            ) : (
+              <div className="pdf-loading"><span className="spin">⏳</span></div>
+            )}
+            <p className="note" style={{ marginTop: 10 }}>Pokud se náhled nezobrazí (např. na iPhonu), otevři PDF tlačítkem výše.</p>
+          </div>
+        </div>
+        </div>
       </main>
 
       {toast && <div className="toast">{toast}</div>}

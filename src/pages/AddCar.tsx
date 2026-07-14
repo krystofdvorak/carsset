@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import type { CarType } from '../data/cars'
 import { fmtCZK } from '../lib/format'
+import { BackButton } from '../components/BackButton'
 
 export function AddCar() {
   const nav = useNavigate()
@@ -50,7 +51,7 @@ export function AddCar() {
   return (
     <div className="app">
       <header className="topbar">
-        <button className="back-btn" onClick={() => nav('/')}>‹</button>
+        <BackButton onClick={() => nav('/')} />
         <div style={{ flex: 1 }}><h1>Auta v nabídce</h1><div className="sub">Přidej vozidlo a jeho ceny</div></div>
       </header>
 

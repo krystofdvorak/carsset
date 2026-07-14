@@ -5,6 +5,8 @@ import { db, emptyCustomer, upsertClient, type Client, type Customer, type Contr
 import { useCars, carById } from '../hooks/useCars'
 import { SignaturePad, type SignaturePadHandle } from '../components/SignaturePad'
 import { Switch } from '../components/Switch'
+import { BackButton } from '../components/BackButton'
+import { isValidEmail, isValidPhone, isValidIdentifier } from '../lib/validate'
 import { generatePdfBlob } from '../lib/pdf'
 import { sendContractEmail } from '../lib/email'
 import { priceFor, computeEnd, isWeekendStart, is72Allowed, nowLocal, ANTIRADAR_PRICE } from '../lib/pricing'
@@ -77,11 +79,16 @@ export function NewContract() {
     setSuggestions([])
   }
 
+  const emailValid = isValidEmail(customer.email)
+  const phoneValid = customer.phone.trim() === '' || isValidPhone(customer.phone)
+  const idValid = isValidIdentifier(customer.identifier)
+  const nameValid = customer.firstName.trim() !== '' && customer.lastName.trim() !== ''
+
   const canNext = [
     !!carId,
     !!tier && !!rentalStart && !conflict && !tier72Invalid,
-    customer.firstName.trim() !== '' && customer.lastName.trim() !== '' && customer.identifier.trim() !== '',
-    !sigEmpty,
+    nameValid && idValid && emailValid && phoneValid,
+    !sigEmpty && depositPaid,
   ][step]
 
   async function handleSave() {
@@ -148,7 +155,7 @@ export function NewContract() {
   return (
     <div className="app">
       <header className="topbar">
-        <button className="back-btn" onClick={back}>‹</button>
+        <BackButton onClick={back} />
         <div style={{ flex: 1 }}><h1>Nová smlouva</h1><div className="sub">Krok {step + 1} z {STEPS.length}</div></div>
       </header>
 
@@ -165,6 +172,7 @@ export function NewContract() {
                 <button className={type === 'dodavka' ? 'active' : ''} onClick={() => { setType('dodavka'); setCarId('') }}>🚐 Dodávka</button>
               </div>
             </div>
+            <div className="car-grid">
             {filtered.map((c) => (
               <button key={c.id} className={`car ${carId === c.id ? 'selected' : ''}`} onClick={() => setCarId(c.id)}>
                 <span className="emoji">{c.type === 'dodavka' ? '🚐' : '🏎️'}</span>
@@ -175,6 +183,7 @@ export function NewContract() {
                 <span className="price"><small>od</small>{fmtCZK(minPrice(c))}</span>
               </button>
             ))}
+            </div>
           </div>
         )}
 
@@ -223,7 +232,6 @@ export function NewContract() {
             <div className="card">
               <h2>Doplňky</h2>
               <Switch checked={antiradar} onChange={setAntiradar} label="Půjčuje si antiradar" sub={`Příplatek + ${fmtCZK(ANTIRADAR_PRICE)}`} />
-              <Switch checked={depositPaid} onChange={setDepositPaid} label="Kauce uhrazena" sub={`Vratná kauce ${car ? fmtCZK(deposit) : '—'}`} />
             </div>
           </div>
         )}
@@ -253,20 +261,23 @@ export function NewContract() {
                 <label>Jméno *</label>
                 <input value={customer.firstName} onChange={(e) => upd({ firstName: e.target.value })} />
               </div>
-              <div className="field">
+              <div className={`field ${customer.identifier && !idValid ? 'err' : ''}`}>
                 <label>Identifikátor (RČ / číslo OP) *</label>
                 <input value={customer.identifier}
                   onChange={(e) => { upd({ identifier: e.target.value }); refreshSuggestions(e.target.value); setShowSuggest(true) }}
                   placeholder="např. 900101/1234" autoComplete="off" />
+                {customer.identifier && !idValid && <div className="field-err">Zadej platný identifikátor (min. 6 znaků, číslice).</div>}
               </div>
-              <div className="field">
-                <label>E-mail zákazníka (kam přijde PDF)</label>
+              <div className={`field ${customer.email && !emailValid ? 'err' : ''}`}>
+                <label>E-mail zákazníka * (kam přijde PDF)</label>
                 <input type="email" inputMode="email" value={customer.email}
                   onChange={(e) => upd({ email: e.target.value })} placeholder="klient@email.cz" />
+                {customer.email && !emailValid && <div className="field-err">Neplatný e-mail.</div>}
               </div>
-              <div className="field" style={{ marginBottom: 0 }}>
+              <div className={`field ${!phoneValid ? 'err' : ''}`} style={{ marginBottom: 0 }}>
                 <label>Telefon</label>
-                <input type="tel" inputMode="tel" value={customer.phone} onChange={(e) => upd({ phone: e.target.value })} />
+                <input type="tel" inputMode="tel" value={customer.phone} onChange={(e) => upd({ phone: e.target.value })} placeholder="+420 777 123 456" />
+                {!phoneValid && <div className="field-err">Neplatné telefonní číslo.</div>}
               </div>
               <p className="note" style={{ marginTop: 10 }}>PDF se po podpisu automaticky odešle zákazníkovi i majiteli půjčovny.</p>
             </div>
@@ -284,6 +295,11 @@ export function NewContract() {
               <div className="summary-row"><span className="k">Antiradar</span><span className="v">{antiradar ? `Ano · +${fmtCZK(ANTIRADAR_PRICE)}` : 'Ne'}</span></div>
               <div className="summary-row"><span className="k">Kauce</span><span className="v">{fmtCZK(deposit)} · {depositPaid ? 'uhrazena' : 'neuhrazena'}</span></div>
               <div className="summary-total"><span className="k">Cena celkem</span><span className="amount">{fmtCZK(price)}</span></div>
+            </div>
+            <div className="card">
+              <h2>Kauce</h2>
+              <Switch checked={depositPaid} onChange={setDepositPaid} label="Kauce uhrazena" sub={`Vratná kauce ${fmtCZK(deposit)}`} />
+              {!depositPaid && <div className="banner warn" style={{ marginTop: 10, marginBottom: 0 }}>⚠ Bez potvrzení úhrady kauce nelze smlouvu vytvořit a odeslat.</div>}
             </div>
             <div className="card">
               <h2>Podpis nájemce</h2>

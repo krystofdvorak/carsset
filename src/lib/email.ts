@@ -52,11 +52,12 @@ export async function sendContractEmail(
     // síť/endpoint nedostupný → fallback
   }
 
-  // 2) fallback: systémové sdílení s přílohou PDF
+  // 2) fallback: systémové sdílení s přílohou PDF (jen na dotykových zařízeních – mobil/tablet)
+  const isTouch = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches
   try {
     const file = new File([pdf], filename, { type: 'application/pdf' })
     const nav = navigator as Navigator & { canShare?: (d: unknown) => boolean }
-    if (nav.canShare?.({ files: [file] }) && navigator.share) {
+    if (isTouch && nav.canShare?.({ files: [file] }) && navigator.share) {
       await navigator.share({
         files: [file],
         title: `Smlouva ${opts.contractNumber}`,

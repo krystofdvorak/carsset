@@ -25,7 +25,8 @@ export function Home() {
             <p>Zatím žádné smlouvy.<br />Vytvoř první tlačítkem dole.</p>
           </div>
         ) : (
-          contracts.map((c) => {
+          <div className="list-grid">
+          {contracts.map((c) => {
             const st = contractStatus(c)
             return (
               <button key={c.id} className={`list-item st-${st.kind}`} onClick={() => nav(`/smlouva/${c.id}`)}>
@@ -39,7 +40,8 @@ export function Home() {
                 <span style={{ color: 'var(--muted)', fontSize: 22 }}>›</span>
               </button>
             )
-          })
+          })}
+          </div>
         )}
       </main>
 
