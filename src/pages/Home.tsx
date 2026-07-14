@@ -4,7 +4,6 @@ import type { Contract } from '../lib/types'
 import { listContracts, signOut } from '../lib/store'
 import { fmtCZK, fmtDateTime, carEmoji } from '../lib/format'
 import { contractStatus } from '../lib/status'
-import { seedDemoContracts } from '../lib/seed'
 
 function dayKey(iso: string): string {
   const d = new Date(iso)
@@ -20,7 +19,6 @@ function dayLabel(iso: string): string {
 
 export function Home() {
   const nav = useNavigate()
-  const [seeding, setSeeding] = useState(false)
   const [query, setQuery] = useState('')
   const [contracts, setContracts] = useState<Contract[] | undefined>(undefined)
 
@@ -32,16 +30,6 @@ export function Home() {
     }
   }
   useEffect(() => { reload() }, [])
-
-  async function seed() {
-    setSeeding(true)
-    try {
-      await seedDemoContracts(Date.now())
-      await reload()
-    } finally {
-      setSeeding(false)
-    }
-  }
 
   const q = query.trim().toLowerCase()
   const filtered = (contracts ?? []).filter((c) => {
@@ -91,15 +79,9 @@ export function Home() {
           <div className="empty">
             <div className="big">📄</div>
             <p>Zatím žádné smlouvy.<br />Vytvoř první tlačítkem dole.</p>
-            <button className="btn ghost" style={{ maxWidth: 320, margin: '20px auto 0' }} onClick={seed} disabled={seeding}>
-              {seeding ? <span className="spin">⏳</span> : '✨'} Vložit ukázkové smlouvy
-            </button>
           </div>
         ) : (
           <>
-            <button className="seed-link" onClick={seed} disabled={seeding}>
-              {seeding ? 'Vkládám…' : '✨ Vložit ukázkové smlouvy (demo)'}
-            </button>
             <div className="search">
               <span className="search-icon">🔍</span>
               <input
