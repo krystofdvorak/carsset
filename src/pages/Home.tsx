@@ -75,11 +75,6 @@ export function Home() {
       <main className="content">
         {contracts === undefined ? (
           <div className="empty"><span className="spin big">⏳</span></div>
-        ) : contracts.length === 0 ? (
-          <div className="empty">
-            <div className="big">📄</div>
-            <p>Zatím žádné smlouvy.<br />Vytvoř první tlačítkem dole.</p>
-          </div>
         ) : (
           <>
             <div className="search">
@@ -92,7 +87,13 @@ export function Home() {
               />
               {query && <button className="search-clear" onClick={() => setQuery('')}>✕</button>}
             </div>
-            {groups.length === 0 && (
+            {contracts.length === 0 && (
+              <div className="empty">
+                <div className="big">📄</div>
+                <p>Zatím žádné smlouvy.<br />Vytvoř první tlačítkem dole.</p>
+              </div>
+            )}
+            {contracts.length > 0 && groups.length === 0 && (
               <div className="empty" style={{ padding: '40px 20px' }}>
                 <div className="big">🔍</div>
                 <p>Nic nenalezeno pro „{query}".</p>
