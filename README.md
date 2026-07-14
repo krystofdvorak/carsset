@@ -4,6 +4,19 @@ Mobilní web aplikace (PWA) pro půjčovnu **Carsset Brno**. Vytvoření nájemn
 telefonu: výběr vozidla, hlídání termínů v kalendáři, podpis prstem, PDF a automatické
 odeslání e-mailem. V brandingu Carsset (červená `#ef0001`, tmavé téma).
 
+## 🔗 Živý preview
+
+**https://krystofdvorak.github.io/carsset/** — funguje na mobilu i desktopu (responzivní).
+Data jsou lokální v prohlížeči každého zařízení (IndexedDB), preview startuje prázdný.
+
+> Na GitHub Pages (statický hosting) běží vše kromě serverového odesílání e-mailu –
+> tam appka nabídne **sdílení / stažení PDF**. Reálné auto-odesílání viz sekce níže (Vercel + Resend).
+
+### Aktualizace preview
+```bash
+npm run deploy      # build + push na větev gh-pages (~1 min než se projeví)
+```
+
 ## Funkce
 
 - 🏎️ / 🚐 **Výběr kategorie** – osobní / sportovní vozy nebo dodávky
