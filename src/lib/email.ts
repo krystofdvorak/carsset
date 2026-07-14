@@ -72,16 +72,7 @@ export async function sendContractEmail(
     if ((e as Error).name === 'AbortError') return { ok: false, mode: 'share', recipients, detail: 'zrušeno' }
   }
 
-  // 3) poslední záchrana: stáhnout PDF
-  try {
-    const url = URL.createObjectURL(pdf)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-    setTimeout(() => URL.revokeObjectURL(url), 60000)
-    return { ok: true, mode: 'download', recipients }
-  } catch {
-    return { ok: false, mode: 'failed', recipients }
-  }
+  // bez API a bez sdílení (typicky desktop): nic nestahujeme automaticky –
+  // PDF je uložené u smlouvy a jde odeslat/otevřít z detailu.
+  return { ok: false, mode: 'failed', recipients }
 }
