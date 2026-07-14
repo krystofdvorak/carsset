@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { type CarType } from '../data/cars'
 import { emptyCustomer, type Client, type Customer, type PhotoBlob, type PhotoKind, type Contract } from '../lib/types'
-import { createContract, upsertClient, findConflict, searchClients, listContracts, setEmailSentTo } from '../lib/store'
+import { createContract, upsertClient, findConflict, searchClients, listContracts, setEmailSentTo, ocrDoklad } from '../lib/store'
 import { useCars, carById } from '../hooks/useCars'
 import { SignaturePad, type SignaturePadHandle } from '../components/SignaturePad'
 import { Switch } from '../components/Switch'
@@ -47,7 +47,40 @@ export function NewContract() {
   const [previewUrl, setPreviewUrl] = useState<string>()
   const [docPhotos, setDocPhotos] = useState<Partial<Record<PhotoKind, Blob>>>({})
   const [carPhotos, setCarPhotos] = useState<Blob[]>([])
+  const [ocrBusy, setOcrBusy] = useState(false)
+  const [ocrMsg, setOcrMsg] = useState('')
   const sigRef = useRef<SignaturePadHandle>(null)
+
+  // OCR: načte údaje z fotky občanky (rodné číslo) / doplní z řidičáku
+  async function runOcr() {
+    const src: [Blob, 'op' | 'rp'] | undefined = docPhotos.idFront
+      ? [docPhotos.idFront, 'op']
+      : docPhotos.licenseFront
+        ? [docPhotos.licenseFront, 'rp']
+        : undefined
+    if (!src) return
+    setOcrBusy(true)
+    setOcrMsg('')
+    try {
+      const r = await ocrDoklad(src[0], src[1])
+      setCustomer((c) => ({
+        ...c,
+        firstName: r.firstName ?? c.firstName,
+        lastName: r.lastName ?? c.lastName,
+        identifier: r.rodneCislo ?? c.identifier,
+      }))
+      const filled = [r.firstName && 'jméno', r.lastName && 'příjmení', r.rodneCislo && 'rodné číslo'].filter(Boolean)
+      setOcrMsg(
+        filled.length
+          ? `✓ Načteno: ${filled.join(', ')}. Zkontroluj a případně oprav.`
+          : 'Nepodařilo se nic přečíst – zkus lepší/ostřejší fotku nebo vyplň ručně.',
+      )
+    } catch (e) {
+      setOcrMsg('Načtení selhalo: ' + (e as Error).message)
+    } finally {
+      setOcrBusy(false)
+    }
+  }
 
   const DOC_FIELDS: { kind: PhotoKind; label: string }[] = [
     { kind: 'idFront', label: 'Občanka – přední' },
@@ -329,7 +362,17 @@ export function NewContract() {
                     onRemove={(k) => setDocPhotos((p) => { const n = { ...p }; delete n[k]; return n })} />
                 ))}
               </div>
-              <p className="note" style={{ marginTop: 10 }}>Foto OP a ŘP se přiloží ke smlouvě (PDF). Nepovinné.</p>
+              <button
+                type="button"
+                className="btn ghost"
+                style={{ marginTop: 12 }}
+                disabled={ocrBusy || (!docPhotos.idFront && !docPhotos.licenseFront)}
+                onClick={runOcr}
+              >
+                {ocrBusy ? <><span className="spin">⏳</span> Načítám z fotky…</> : '✨ Načíst údaje z fotky dokladu'}
+              </button>
+              {ocrMsg && <div className="note" style={{ marginTop: 8 }}>{ocrMsg}</div>}
+              <p className="note" style={{ marginTop: 10 }}>Vyfoť občanku, klikni „Načíst z fotky" – doplní jméno, příjmení a rodné číslo (můžeš opravit). Foto se přiloží ke smlouvě.</p>
             </div>
           </div>
         )}

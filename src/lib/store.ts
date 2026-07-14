@@ -34,6 +34,31 @@ function mapRow(r: Row): Contract {
   }
 }
 
+// ---------- OCR dokladů (Edge Function) ----------
+export interface OcrResult {
+  firstName: string | null
+  lastName: string | null
+  rodneCislo: string | null
+  documentNumber: string | null
+}
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(r.result as string)
+    r.onerror = reject
+    r.readAsDataURL(blob)
+  })
+}
+export async function ocrDoklad(blob: Blob, docType: 'op' | 'rp'): Promise<OcrResult> {
+  const image = await blobToDataUrl(blob)
+  const { data, error } = await supabase.functions.invoke('ocr-doklad', {
+    body: { image, docType },
+  })
+  if (error) throw error
+  if (data?.error) throw new Error(data.error)
+  return data as OcrResult
+}
+
 // ---------- Auth ----------
 export async function signIn(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password })
