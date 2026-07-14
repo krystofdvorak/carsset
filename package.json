@@ -11,6 +11,7 @@
     "deploy": "bash scripts/deploy.sh"
   },
   "dependencies": {
+    "browser-image-compression": "^2.0.2",
     "dexie": "^4.4.4",
     "dexie-react-hooks": "^4.4.0",
     "pdfmake": "^0.2.20",

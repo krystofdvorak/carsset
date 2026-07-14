@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { type CarType } from '../data/cars'
-import { db, emptyCustomer, upsertClient, type Client, type Customer, type Contract } from '../db/db'
+import { db, emptyCustomer, upsertClient, type Client, type Customer, type Contract, type Photo, type PhotoKind } from '../db/db'
 import { useCars, carById } from '../hooks/useCars'
 import { SignaturePad, type SignaturePadHandle } from '../components/SignaturePad'
 import { Switch } from '../components/Switch'
+import { PhotoInput } from '../components/PhotoInput'
+import { compressPhoto } from '../lib/image'
 import { BackButton } from '../components/BackButton'
 import { DateTimeField } from '../components/DateTimeField'
 import { isValidEmail, isValidPhone, isValidIdentifier } from '../lib/validate'
@@ -43,7 +45,26 @@ export function NewContract() {
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string>()
+  const [docPhotos, setDocPhotos] = useState<Partial<Record<PhotoKind, Blob>>>({})
+  const [carPhotos, setCarPhotos] = useState<Blob[]>([])
   const sigRef = useRef<SignaturePadHandle>(null)
+
+  const DOC_FIELDS: { kind: PhotoKind; label: string }[] = [
+    { kind: 'idFront', label: 'Občanka – přední' },
+    { kind: 'idBack', label: 'Občanka – zadní' },
+    { kind: 'licenseFront', label: 'Řidičák – přední' },
+    { kind: 'licenseBack', label: 'Řidičák – zadní' },
+  ]
+
+  function collectPhotos(): Photo[] {
+    const out: Photo[] = []
+    for (const { kind } of DOC_FIELDS) {
+      const b = docPhotos[kind]
+      if (b) out.push({ kind, blob: b })
+    }
+    for (const b of carPhotos) out.push({ kind: 'car', blob: b })
+    return out
+  }
 
   const filtered = cars
     .filter((c) => c.type === type)
@@ -79,7 +100,8 @@ export function NewContract() {
       const draft: Contract = {
         id: 'draft', number: 'náhled', createdAt: Date.now(),
         carId, carName: car.name, carType: car.type, price, deposit,
-        depositPaid, antiradar, rentalStart, rentalEnd, customer, signature: '', returned: false,
+        depositPaid, antiradar, rentalStart, rentalEnd, customer,
+        photos: collectPhotos(), signature: '', returned: false,
       }
       const pdf = await generatePdfBlob(draft)
       if (cancelled) return
@@ -88,7 +110,7 @@ export function NewContract() {
     }, 350)
     return () => { cancelled = true; clearTimeout(t); if (url) URL.revokeObjectURL(url) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, carId, rentalStart, rentalEnd, price, deposit, depositPaid, antiradar, customer])
+  }, [step, carId, rentalStart, rentalEnd, price, deposit, depositPaid, antiradar, customer, docPhotos, carPhotos])
 
   // našeptávání klientů podle příjmení / identifikátoru
   async function refreshSuggestions(q: string) {
@@ -148,6 +170,7 @@ export function NewContract() {
         rentalStart,
         rentalEnd,
         customer,
+        photos: collectPhotos(),
         signature,
         returned: false,
       }
@@ -214,6 +237,21 @@ export function NewContract() {
               </button>
             ))}
             </div>
+
+            {carId && (
+              <div className="card" style={{ marginTop: 14 }}>
+                <h2>Foto vozidla (stav při předání)</h2>
+                <div className="photo-grid">
+                  {carPhotos.map((b, i) => (
+                    <PhotoInput key={i} kind="car" label="Foto vozidla" blob={b}
+                      onCapture={(_, nb) => setCarPhotos((a) => a.map((x, j) => (j === i ? nb : x)))}
+                      onRemove={() => setCarPhotos((a) => a.filter((_, j) => j !== i))} />
+                  ))}
+                  <AddCarPhoto onAdd={(b) => setCarPhotos((a) => [...a, b])} />
+                </div>
+                <p className="note" style={{ marginTop: 10 }}>Nepovinné, doporučené – přiloží se ke smlouvě jako důkaz stavu.</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -300,6 +338,18 @@ export function NewContract() {
               </div>
               <p className="note" style={{ marginTop: 10 }}>PDF se po podpisu automaticky odešle zákazníkovi i majiteli půjčovny.</p>
             </div>
+
+            <div className="card">
+              <h2>Foto dokladů</h2>
+              <div className="photo-grid">
+                {DOC_FIELDS.map((f) => (
+                  <PhotoInput key={f.kind} kind={f.kind} label={f.label} blob={docPhotos[f.kind]}
+                    onCapture={(k, b) => setDocPhotos((p) => ({ ...p, [k]: b }))}
+                    onRemove={(k) => setDocPhotos((p) => { const n = { ...p }; delete n[k]; return n })} />
+                ))}
+              </div>
+              <p className="note" style={{ marginTop: 10 }}>Foto OP a ŘP se přiloží ke smlouvě (PDF). Nepovinné.</p>
+            </div>
           </div>
         )}
 
@@ -347,5 +397,27 @@ export function NewContract() {
         {step > 0 && <button className="btn ghost small" onClick={back} disabled={saving}>Zpět</button>}
       </div>
     </div>
+  )
+}
+
+function AddCarPhoto({ onAdd }: { onAdd: (b: Blob) => void }) {
+  const ref = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false)
+  return (
+    <>
+      <input ref={ref} type="file" accept="image/*" capture="environment" hidden
+        onChange={async (e) => {
+          const file = e.target.files?.[0]
+          e.target.value = ''
+          if (!file) return
+          setBusy(true)
+          onAdd(await compressPhoto(file, 'car'))
+          setBusy(false)
+        }} />
+      <button type="button" className="photo-btn" onClick={() => ref.current?.click()} disabled={busy}>
+        <span className="photo-icon">{busy ? '⏳' : '＋'}</span>
+        <span>{busy ? 'Zpracovávám…' : 'Přidat fotku'}</span>
+      </button>
+    </>
   )
 }

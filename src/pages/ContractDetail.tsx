@@ -163,6 +163,15 @@ export function ContractDetail() {
           <div className="summary-total"><span className="k">Cena celkem</span><span className="amount">{fmtCZK(contract.price)}</span></div>
         </div>
 
+        {contract.photos && contract.photos.length > 0 && (
+          <div className="card">
+            <h2>Fotky ({contract.photos.length})</h2>
+            <div className="photo-grid">
+              {contract.photos.map((p, i) => <PhotoThumb key={i} blob={p.blob} />)}
+            </div>
+          </div>
+        )}
+
         {contract.emailSentTo && contract.emailSentTo.length > 0 && (
           <div className="banner ok">📧 Odesláno: {contract.emailSentTo.join(', ')}</div>
         )}
@@ -194,4 +203,14 @@ export function ContractDetail() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   )
+}
+
+function PhotoThumb({ blob }: { blob: Blob }) {
+  const [url, setUrl] = useState<string>()
+  useEffect(() => {
+    const u = URL.createObjectURL(blob)
+    setUrl(u)
+    return () => URL.revokeObjectURL(u)
+  }, [blob])
+  return <div className="photo-preview">{url && <img src={url} alt="příloha" />}</div>
 }

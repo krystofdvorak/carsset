@@ -9,6 +9,13 @@ export interface Customer {
   phone: string
 }
 
+export type PhotoKind = 'idFront' | 'idBack' | 'licenseFront' | 'licenseBack' | 'car'
+
+export interface Photo {
+  kind: PhotoKind
+  blob: Blob
+}
+
 export interface Contract {
   id: string
   number: string
@@ -24,6 +31,7 @@ export interface Contract {
   rentalStart: string // ISO datetime-local
   rentalEnd: string
   customer: Customer
+  photos?: Photo[]
   signature: string
   pdf?: Blob
   emailSentTo?: string[] // komu už bylo odesláno

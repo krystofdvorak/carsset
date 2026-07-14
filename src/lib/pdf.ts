@@ -71,7 +71,7 @@ function checkbox(label: string, checked: boolean): Content {
   }
 }
 
-function buildDocDefinition(c: Contract): TDocumentDefinitions {
+async function buildDocDefinition(c: Contract): Promise<TDocumentDefinitions> {
   const cust = c.customer
   const fullName = `${cust.firstName} ${cust.lastName}`.trim() || '—'
 
@@ -154,6 +154,37 @@ function buildDocDefinition(c: Contract): TDocumentDefinitions {
     },
   ]
 
+  // Přílohy – fotky dokladů a vozidla
+  const photos = c.photos ?? []
+  const docs = photos.filter((p) => p.kind !== 'car')
+  const carPics = photos.filter((p) => p.kind === 'car')
+  const docLabels: Record<string, string> = {
+    idFront: 'Občanský průkaz – přední strana',
+    idBack: 'Občanský průkaz – zadní strana',
+    licenseFront: 'Řidičský průkaz – přední strana',
+    licenseBack: 'Řidičský průkaz – zadní strana',
+  }
+  if (docs.length) {
+    content.push({ text: 'Přílohy – doklady nájemce', style: 'h2', pageBreak: 'before' })
+    for (const p of docs) {
+      const url = await blobToDataUrl(p.blob)
+      content.push({ text: docLabels[p.kind] ?? 'Doklad', style: 'caption', margin: [0, 8, 0, 4] })
+      content.push({ image: url, fit: [500, 300], margin: [0, 0, 0, 8] })
+    }
+  }
+  if (carPics.length) {
+    content.push({ text: 'Přílohy – stav vozidla', style: 'h2', pageBreak: 'before' })
+    for (let i = 0; i < carPics.length; i += 2) {
+      const a = await blobToDataUrl(carPics[i].blob)
+      const b = carPics[i + 1] ? await blobToDataUrl(carPics[i + 1].blob) : null
+      content.push({
+        columns: [{ image: a, fit: [250, 180] }, b ? { image: b, fit: [250, 180] } : { text: '' }],
+        columnGap: 10,
+        margin: [0, 0, 0, 8],
+      })
+    }
+  }
+
   return {
     pageSize: 'A4',
     pageMargins: [40, 40, 40, 50],
@@ -176,8 +207,8 @@ function buildDocDefinition(c: Contract): TDocumentDefinitions {
   }
 }
 
-export function generatePdfBlob(c: Contract): Promise<Blob> {
-  const def = buildDocDefinition(c)
+export async function generatePdfBlob(c: Contract): Promise<Blob> {
+  const def = await buildDocDefinition(c)
   return new Promise((resolve) => {
     ;(pdfMake.createPdf(def) as unknown as {
       getBlob: (cb: (b: Blob) => void) => void
