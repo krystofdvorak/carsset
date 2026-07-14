@@ -3,16 +3,17 @@ import { mkdirSync, readFileSync } from 'node:fs'
 
 mkdirSync(new URL('../public/icons', import.meta.url), { recursive: true })
 
-// vytáhni červenou pulzní značku přímo z loga
+// celé logo Carsset na tmavém zaobleném podkladu
 const logo = readFileSync(new URL('../public/logo.svg', import.meta.url), 'utf8')
-const redPath = logo.match(/<path d="([^"]+)"[^>]*fill:#ef0001/)[1]
+const inner = logo
+  .replace(/<\?xml[^>]*\?>/, '')
+  .replace(/^[\s\S]*?<svg[^>]*>/, '')
+  .replace(/<\/svg>\s*$/, '')
 
 const svg = () => `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2546 2546">
   <rect width="2546" height="2546" rx="480" fill="#0a0a0c"/>
-  <svg x="323" y="323" width="1900" height="1900" viewBox="480 40 1400 2470" preserveAspectRatio="xMidYMid meet">
-    <path d="${redPath}" fill="#ef0001"/>
-  </svg>
+  <svg x="150" y="150" width="2246" height="2246" viewBox="0 0 7112 2546" preserveAspectRatio="xMidYMid meet">${inner}</svg>
 </svg>`
 
 const targets = [
