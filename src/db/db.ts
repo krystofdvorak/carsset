@@ -16,7 +16,7 @@ export interface Contract {
   carId: string
   carName: string
   carType: CarType
-  tier: PriceTier
+  tier?: PriceTier // nepovinné – cena se zadává ručně
   price: number
   deposit: number
   depositPaid: boolean // switch „kauce uhrazena"

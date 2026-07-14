@@ -52,8 +52,11 @@ export async function sendContractEmail(
     // síť/endpoint nedostupný → fallback
   }
 
-  // 2) fallback: systémové sdílení s přílohou PDF (jen na dotykových zařízeních – mobil/tablet)
-  const isTouch = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches
+  // 2) fallback: systémové sdílení s přílohou PDF (jen na reálně dotykových zařízeních – mobil/tablet)
+  const isTouch =
+    typeof matchMedia !== 'undefined' &&
+    matchMedia('(pointer: coarse)').matches &&
+    (navigator.maxTouchPoints ?? 0) > 0
   try {
     const file = new File([pdf], filename, { type: 'application/pdf' })
     const nav = navigator as Navigator & { canShare?: (d: unknown) => boolean }

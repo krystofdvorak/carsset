@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { TIERS, type CarType, type PriceTier } from '../data/cars'
+import { type CarType } from '../data/cars'
 import { db, emptyCustomer, upsertClient, type Client, type Customer, type Contract } from '../db/db'
 import { useCars, carById } from '../hooks/useCars'
 import { SignaturePad, type SignaturePadHandle } from '../components/SignaturePad'
@@ -10,11 +10,19 @@ import { DateTimeField } from '../components/DateTimeField'
 import { isValidEmail, isValidPhone, isValidIdentifier } from '../lib/validate'
 import { generatePdfBlob } from '../lib/pdf'
 import { sendContractEmail } from '../lib/email'
-import { priceFor, computeEnd, isWeekendStart, is72Allowed, nowLocal, ANTIRADAR_PRICE } from '../lib/pricing'
+import { nowLocal, ANTIRADAR_PRICE } from '../lib/pricing'
 import { findConflict } from '../lib/overlap'
 import { fmtCZK, fmtDateTime, contractNumber } from '../lib/format'
 
-const STEPS = ['Vozidlo', 'Termín a doplňky', 'Nájemce', 'Podpis'] as const
+const STEPS = ['Vozidlo', 'Termín a cena', 'Nájemce', 'Podpis'] as const
+
+function addHoursLocal(startLocal: string, hours: number): string {
+  const d = new Date(startLocal)
+  if (isNaN(d.getTime())) return ''
+  d.setHours(d.getHours() + hours)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 export function NewContract() {
   const nav = useNavigate()
@@ -22,8 +30,9 @@ export function NewContract() {
   const [step, setStep] = useState(0)
   const [type, setType] = useState<CarType>('osobni')
   const [carId, setCarId] = useState('')
-  const [tier, setTier] = useState<PriceTier | ''>('')
   const [rentalStart, setRentalStart] = useState(nowLocal())
+  const [rentalEnd, setRentalEnd] = useState(addHoursLocal(nowLocal(), 24))
+  const [basePrice, setBasePrice] = useState<number | ''>('')
   const [antiradar, setAntiradar] = useState(false)
   const [depositPaid, setDepositPaid] = useState(false)
   const [customer, setCustomer] = useState<Customer>(emptyCustomer())
@@ -36,38 +45,40 @@ export function NewContract() {
   const [previewUrl, setPreviewUrl] = useState<string>()
   const sigRef = useRef<SignaturePadHandle>(null)
 
-  const minPrice = (c: (typeof cars)[number]) =>
-    Math.min(c.prices.p5, c.prices.p10, c.prices.p24, c.prices.p24w, c.prices.p72)
-  const filtered = cars.filter((c) => c.type === type).sort((a, b) => minPrice(a) - minPrice(b))
+  const filtered = cars
+    .filter((c) => c.type === type)
+    .sort((a, b) => a.prices.p24 - b.prices.p24)
   const car = carById(cars, carId)
-  const weekend = isWeekendStart(rentalStart)
-  const allow72 = is72Allowed(rentalStart)
-  const tier72Invalid = tier === '72h' && !allow72
-  const basePrice = car && tier ? priceFor(car, tier, rentalStart) : 0
+  const basePriceNum = basePrice === '' ? 0 : basePrice
   const antiradarFee = antiradar ? ANTIRADAR_PRICE : 0
-  const price = basePrice + antiradarFee
+  const price = basePriceNum + antiradarFee
   const deposit = car?.deposit ?? 0
-  const rentalEnd = useMemo(() => (tier ? computeEnd(rentalStart, tier) : ''), [rentalStart, tier])
+  const endAfterStart = new Date(rentalEnd).getTime() > new Date(rentalStart).getTime()
 
   const upd = (patch: Partial<Customer>) => setCustomer((c) => ({ ...c, ...patch }))
+
+  function selectCar(id: string, suggestedPrice: number) {
+    setCarId(id)
+    setBasePrice((p) => (p === '' ? suggestedPrice : p)) // předvyplní návrhem, jde přepsat
+  }
 
   // hlídání překrytí rezervací
   useEffect(() => {
     let alive = true
-    if (!carId || !tier || !rentalStart || !rentalEnd) { setConflict(null); return }
+    if (!carId || !rentalStart || !rentalEnd || !endAfterStart) { setConflict(null); return }
     findConflict(carId, rentalStart, rentalEnd).then((c) => { if (alive) setConflict(c) })
     return () => { alive = false }
-  }, [carId, tier, rentalStart, rentalEnd])
+  }, [carId, rentalStart, rentalEnd, endAfterStart])
 
   // náhled smlouvy na kroku Podpis – klient si ji přečte ještě před podepsáním
   useEffect(() => {
-    if (step !== 3 || !car || !tier) return
+    if (step !== 3 || !car) return
     let url: string | undefined
     let cancelled = false
     const t = setTimeout(async () => {
       const draft: Contract = {
         id: 'draft', number: 'náhled', createdAt: Date.now(),
-        carId, carName: car.name, carType: car.type, tier, price, deposit,
+        carId, carName: car.name, carType: car.type, price, deposit,
         depositPaid, antiradar, rentalStart, rentalEnd, customer, signature: '', returned: false,
       }
       const pdf = await generatePdfBlob(draft)
@@ -77,7 +88,7 @@ export function NewContract() {
     }, 350)
     return () => { cancelled = true; clearTimeout(t); if (url) URL.revokeObjectURL(url) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, carId, tier, rentalStart, rentalEnd, price, deposit, depositPaid, antiradar, customer])
+  }, [step, carId, rentalStart, rentalEnd, price, deposit, depositPaid, antiradar, customer])
 
   // našeptávání klientů podle příjmení / identifikátoru
   async function refreshSuggestions(q: string) {
@@ -108,13 +119,13 @@ export function NewContract() {
 
   const canNext = [
     !!carId,
-    !!tier && !!rentalStart && !conflict && !tier72Invalid,
+    !!rentalStart && !!rentalEnd && endAfterStart && basePriceNum > 0 && !conflict,
     nameValid && idValid && emailValid && phoneValid,
     !sigEmpty && depositPaid,
   ][step]
 
   async function handleSave() {
-    if (!car || !tier) return
+    if (!car) return
     setSaving(true)
     setStatus('Generuji PDF…')
     try {
@@ -130,7 +141,6 @@ export function NewContract() {
         carId,
         carName: car.name,
         carType: car.type,
-        tier,
         price,
         deposit,
         depositPaid,
@@ -146,14 +156,12 @@ export function NewContract() {
       await db.contracts.add(contract)
       await upsertClient(customer, now)
 
-      // automatické odeslání e-mailem (zákazník + owner)
       setStatus('Odesílám e-mail…')
       const sent = await sendContractEmail(pdf, {
         contractNumber: contract.number,
         customerEmail: customer.email,
         customerName: `${customer.firstName} ${customer.lastName}`.trim(),
       })
-      // „Odesláno" evidujeme jen při reálném odeslání přes API; share/download je jen příprava
       if (sent.ok && sent.mode === 'api') {
         await db.contracts.update(id, { emailSentTo: sent.recipients })
       }
@@ -196,13 +204,13 @@ export function NewContract() {
             </div>
             <div className="car-grid">
             {filtered.map((c) => (
-              <button key={c.id} className={`car ${carId === c.id ? 'selected' : ''}`} onClick={() => setCarId(c.id)}>
+              <button key={c.id} className={`car ${carId === c.id ? 'selected' : ''}`} onClick={() => selectCar(c.id, c.prices.p24)}>
                 <span className="emoji">{c.type === 'dodavka' ? '🚐' : '🏎️'}</span>
                 <span className="info">
                   <div className="name">{c.name}</div>
                   <div className="meta">kauce {fmtCZK(c.deposit)}</div>
                 </span>
-                <span className="price"><small>od</small>{fmtCZK(minPrice(c))}</span>
+                <span className="price"><small>od</small>{fmtCZK(c.prices.p24)}</span>
               </button>
             ))}
             </div>
@@ -212,33 +220,25 @@ export function NewContract() {
         {step === 1 && (
           <div>
             <div className="card">
-              <h2>Termín</h2>
-              <DateTimeField label="Začátek nájmu" value={rentalStart} onChange={setRentalStart} />
+              <h2>Cena nájmu</h2>
               <div className="field" style={{ marginBottom: 0 }}>
-                <label>Konec nájmu (dopočítáno)</label>
-                <input type="text" value={fmtDateTime(rentalEnd)} disabled />
+                <label>Částka za nájem (Kč) *</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={basePrice}
+                  onChange={(e) => setBasePrice(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="např. 4000"
+                />
               </div>
+              {car && <p className="note" style={{ marginTop: 10 }}>Návrh dle ceníku {car.name}: 24 h = {fmtCZK(car.prices.p24)}. Můžeš přepsat.</p>}
             </div>
 
             <div className="card">
-              <h2>Tarif</h2>
-              <div className="tiers">
-                {TIERS.map((t) => {
-                  const disabled = t.weekendOnly && !allow72
-                  const p = car ? priceFor(car, t.key, rentalStart) : 0
-                  return (
-                    <button key={t.key} className={`tier ${tier === t.key ? 'selected' : ''}`}
-                      disabled={disabled} onClick={() => setTier(t.key)}>
-                      {t.weekendOnly && <span className="t-badge">jen pá</span>}
-                      {t.key === '24h' && weekend && <span className="t-badge">víkend</span>}
-                      <div className="t-label">{t.label}</div>
-                      <div className="t-price">{car ? fmtCZK(p) : '—'}</div>
-                    </button>
-                  )
-                })}
-              </div>
-              {!allow72 && <p className="note" style={{ marginTop: 10 }}>72h balíček (pá–po) lze zvolit jen když je začátek v pátek.</p>}
-              {tier === '24h' && weekend && <p className="note" style={{ marginTop: 10 }}>Použita víkendová 24h sazba (pá–po + svátky).</p>}
+              <h2>Termín</h2>
+              <DateTimeField label="Začátek nájmu" value={rentalStart} onChange={setRentalStart} />
+              <DateTimeField label="Konec nájmu" value={rentalEnd} onChange={setRentalEnd} />
+              {!endAfterStart && <div className="field-err" style={{ marginTop: -4 }}>Konec musí být po začátku.</div>}
             </div>
 
             {conflict && (
@@ -310,7 +310,7 @@ export function NewContract() {
               <div className="summary-row"><span className="k">Vozidlo</span><span className="v">{car?.name}</span></div>
               <div className="summary-row"><span className="k">Nájemce</span><span className="v">{customer.firstName} {customer.lastName}</span></div>
               <div className="summary-row"><span className="k">Termín</span><span className="v">{fmtDateTime(rentalStart)} → {fmtDateTime(rentalEnd)}</span></div>
-              <div className="summary-row"><span className="k">Nájem</span><span className="v">{fmtCZK(basePrice)}</span></div>
+              <div className="summary-row"><span className="k">Nájem</span><span className="v">{fmtCZK(basePriceNum)}</span></div>
               <div className="summary-row"><span className="k">Antiradar</span><span className="v">{antiradar ? `Ano · +${fmtCZK(ANTIRADAR_PRICE)}` : 'Ne'}</span></div>
               <div className="summary-row"><span className="k">Kauce</span><span className="v">{fmtCZK(deposit)} · {depositPaid ? 'uhrazena' : 'neuhrazena'}</span></div>
               <div className="summary-total"><span className="k">Cena celkem</span><span className="amount">{fmtCZK(price)}</span></div>

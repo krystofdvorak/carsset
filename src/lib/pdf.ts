@@ -2,7 +2,6 @@ import pdfMake from 'pdfmake/build/pdfmake'
 import pdfFonts from 'pdfmake/build/vfs_fonts'
 import type { TDocumentDefinitions, Content } from 'pdfmake/interfaces'
 import type { Contract } from '../db/db'
-import { TIERS } from '../data/cars'
 import { fmtCZK, fmtDateTime } from './format'
 import { ANTIRADAR_PRICE } from './pricing'
 
@@ -73,7 +72,6 @@ function checkbox(label: string, checked: boolean): Content {
 }
 
 function buildDocDefinition(c: Contract): TDocumentDefinitions {
-  const tier = TIERS.find((t) => t.key === c.tier)
   const cust = c.customer
   const fullName = `${cust.firstName} ${cust.lastName}`.trim() || '—'
 
@@ -119,7 +117,6 @@ function buildDocDefinition(c: Contract): TDocumentDefinitions {
     { text: '3. Doba a cena nájmu', style: 'h2', margin: [0, 10, 0, 0] },
     labelValue('Začátek nájmu', fmtDateTime(c.rentalStart)),
     labelValue('Konec nájmu', fmtDateTime(c.rentalEnd)),
-    labelValue('Tarif', tier?.label ?? c.tier),
     labelValue('Cena nájmu', fmtCZK(c.price - (c.antiradar ? ANTIRADAR_PRICE : 0))),
     ...(c.antiradar ? [labelValue('Antiradar', `+ ${fmtCZK(ANTIRADAR_PRICE)}`)] : []),
     labelValue('Cena celkem', fmtCZK(c.price)),
