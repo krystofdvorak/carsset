@@ -1,5 +1,6 @@
 :root {
   --bg: #0a0a0c;
+  --page: #101015; /* výplň celého viewportu na desktopu (tón navbaru) */
   --surface: #141417;
   --surface-2: #1c1c21;
   --line: #2a2a31;
@@ -207,7 +208,12 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 
 /* ===== Desktop / širší obrazovky ===== */
 @media (min-width: 760px) {
-  .app { max-width: 920px; }
+  /* celý viewport vyplněný jednotnou barvou (tón navbaru), kontejner jen omezuje šířku obsahu */
+  html, body { background: var(--page); }
+  .app { max-width: 920px; background: var(--page); }
+  .topbar { background: var(--page); border-bottom: none; box-shadow: 0 1px 0 rgba(255,255,255,0.03); }
+  .bottombar { background: var(--page); border-top: none; }
+
   .content { padding: 24px 24px 150px; }
   .topbar { padding-left: 24px; padding-right: 24px; }
   .steps, .step-title { padding-left: 24px; padding-right: 24px; }
