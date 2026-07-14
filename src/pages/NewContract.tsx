@@ -6,6 +6,7 @@ import { useCars, carById } from '../hooks/useCars'
 import { SignaturePad, type SignaturePadHandle } from '../components/SignaturePad'
 import { Switch } from '../components/Switch'
 import { BackButton } from '../components/BackButton'
+import { DateTimeField } from '../components/DateTimeField'
 import { isValidEmail, isValidPhone, isValidIdentifier } from '../lib/validate'
 import { generatePdfBlob } from '../lib/pdf'
 import { sendContractEmail } from '../lib/email'
@@ -32,6 +33,7 @@ export function NewContract() {
   const [sigEmpty, setSigEmpty] = useState(true)
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState('')
+  const [previewUrl, setPreviewUrl] = useState<string>()
   const sigRef = useRef<SignaturePadHandle>(null)
 
   const minPrice = (c: (typeof cars)[number]) =>
@@ -56,6 +58,26 @@ export function NewContract() {
     findConflict(carId, rentalStart, rentalEnd).then((c) => { if (alive) setConflict(c) })
     return () => { alive = false }
   }, [carId, tier, rentalStart, rentalEnd])
+
+  // náhled smlouvy na kroku Podpis – klient si ji přečte ještě před podepsáním
+  useEffect(() => {
+    if (step !== 3 || !car || !tier) return
+    let url: string | undefined
+    let cancelled = false
+    const t = setTimeout(async () => {
+      const draft: Contract = {
+        id: 'draft', number: 'náhled', createdAt: Date.now(),
+        carId, carName: car.name, carType: car.type, tier, price, deposit,
+        depositPaid, antiradar, rentalStart, rentalEnd, customer, signature: '', returned: false,
+      }
+      const pdf = await generatePdfBlob(draft)
+      if (cancelled) return
+      url = URL.createObjectURL(pdf)
+      setPreviewUrl(url)
+    }, 350)
+    return () => { cancelled = true; clearTimeout(t); if (url) URL.revokeObjectURL(url) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, carId, tier, rentalStart, rentalEnd, price, deposit, depositPaid, antiradar, customer])
 
   // našeptávání klientů podle příjmení / identifikátoru
   async function refreshSuggestions(q: string) {
@@ -191,10 +213,7 @@ export function NewContract() {
           <div>
             <div className="card">
               <h2>Termín</h2>
-              <div className="field">
-                <label>Začátek nájmu</label>
-                <input type="datetime-local" value={rentalStart} onChange={(e) => setRentalStart(e.target.value)} />
-              </div>
+              <DateTimeField label="Začátek nájmu" value={rentalStart} onChange={setRentalStart} />
               <div className="field" style={{ marginBottom: 0 }}>
                 <label>Konec nájmu (dopočítáno)</label>
                 <input type="text" value={fmtDateTime(rentalEnd)} disabled />
@@ -300,6 +319,15 @@ export function NewContract() {
               <h2>Kauce</h2>
               <Switch checked={depositPaid} onChange={setDepositPaid} label="Kauce uhrazena" sub={`Vratná kauce ${fmtCZK(deposit)}`} />
               {!depositPaid && <div className="banner warn" style={{ marginTop: 10, marginBottom: 0 }}>⚠ Bez potvrzení úhrady kauce nelze smlouvu vytvořit a odeslat.</div>}
+            </div>
+            <div className="card">
+              <h2>Náhled smlouvy</h2>
+              <p className="note" style={{ margin: '0 0 10px' }}>Nech klienta smlouvu přečíst před podpisem.</p>
+              {previewUrl ? (
+                <iframe className="pdf-frame" src={previewUrl} title="Náhled smlouvy" />
+              ) : (
+                <div className="pdf-loading"><span className="spin">⏳</span></div>
+              )}
             </div>
             <div className="card">
               <h2>Podpis nájemce</h2>

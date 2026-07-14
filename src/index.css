@@ -14,6 +14,7 @@
   --tap: 52px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
+  color-scheme: dark; /* tmavé nativní prvky (kalendář, ikony) */
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -95,6 +96,13 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 .field input:focus, .field select:focus { border-color: var(--accent); }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
+/* datum a čas – klik kamkoliv otevře, světlá ikona kalendáře */
+.dt-input { cursor: pointer; }
+.dt-input::-webkit-calendar-picker-indicator {
+  opacity: 0.9; cursor: pointer; padding: 4px; margin-left: 6px;
+}
+.dt-input::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+
 /* autocomplete */
 .suggest { position: absolute; left: 0; right: 0; top: 100%; z-index: 40; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; margin-top: 4px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
 .suggest button { width: 100%; text-align: left; background: transparent; border: none; color: var(--text); padding: 12px 14px; border-bottom: 1px solid var(--line); }
@@ -136,9 +144,9 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 .bottombar .btn.ghost { flex: 0 0 auto; padding: 0 20px; }
 .bottombar.stack { flex-direction: column; gap: 8px; }
 .bottombar.stack .btn { width: 100%; flex: none; }
-.btn.small { min-height: 40px; font-size: 14px; background: transparent; border: 1px solid var(--line); color: var(--muted); }
+.btn.small { min-height: var(--tap); font-size: 15px; background: transparent; border: 1px solid var(--line); color: var(--muted); }
 
-.steps { display: flex; gap: 6px; padding: 0 16px 10px; }
+.steps { display: flex; gap: 6px; padding: 16px 16px 10px; }
 .steps .dot { flex: 1; height: 4px; border-radius: 999px; background: var(--line); }
 .steps .dot.done { background: var(--accent); }
 .step-title { padding: 4px 16px 0; }
@@ -206,6 +214,15 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 .list-grid, .car-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .list-grid .list-item, .car-grid .car { margin-bottom: 0; }
 
+/* seskupení podle dnů */
+.day-group { margin-bottom: 20px; }
+.day-header { font-size: 13px; font-weight: 700; color: var(--muted); margin: 4px 2px 10px; display: flex; align-items: center; gap: 8px; }
+.day-header .day-count { background: var(--surface-2); border: 1px solid var(--line); color: var(--text); font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 600; }
+.seed-link { width: 100%; background: transparent; border: 1px dashed var(--line); color: var(--muted); border-radius: 12px; padding: 10px; font-size: 13px; margin-bottom: 16px; }
+
+/* mezera mezi akcemi smlouvy a náhledem na mobilu */
+.detail-preview { margin-top: 16px; }
+
 /* ===== Desktop / širší obrazovky ===== */
 @media (min-width: 760px) {
   /* celý viewport vyplněný jednotnou barvou (tón navbaru), kontejner jen omezuje šířku obsahu */
@@ -221,7 +238,7 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
   .list-grid, .car-grid { grid-template-columns: 1fr 1fr; }
 
   .detail-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 16px; align-items: start; }
-  .detail-preview { position: sticky; top: 92px; }
+  .detail-preview { position: sticky; top: 92px; margin-top: 0; }
   .pdf-frame { height: calc(100vh - 230px); min-height: 540px; }
 
   .bottombar { max-width: 920px; padding-left: 24px; padding-right: 24px; }
