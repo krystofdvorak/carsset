@@ -21,6 +21,7 @@ function dayLabel(iso: string): string {
 export function Home() {
   const nav = useNavigate()
   const [seeding, setSeeding] = useState(false)
+  const [query, setQuery] = useState('')
   const contracts = useLiveQuery(() => db.contracts.orderBy('createdAt').reverse().toArray(), [])
 
   async function seed() {
@@ -29,11 +30,18 @@ export function Home() {
     setSeeding(false)
   }
 
+  const q = query.trim().toLowerCase()
+  const filtered = (contracts ?? []).filter((c) => {
+    if (!q) return true
+    const hay = `${c.customer.firstName} ${c.customer.lastName} ${c.customer.identifier} ${c.number} ${c.carName}`.toLowerCase()
+    return hay.includes(q)
+  })
+
   // seskupení podle dne začátku nájmu, dny od nejnovějšího
   const groups: { key: string; label: string; items: Contract[] }[] = []
   if (contracts) {
     const byDay = new Map<string, Contract[]>()
-    for (const c of contracts) {
+    for (const c of filtered) {
       const k = dayKey(c.rentalStart)
       if (!byDay.has(k)) byDay.set(k, [])
       byDay.get(k)!.push(c)
@@ -69,6 +77,22 @@ export function Home() {
             <button className="seed-link" onClick={seed} disabled={seeding}>
               {seeding ? 'Vkládám…' : '✨ Vložit ukázkové smlouvy (demo)'}
             </button>
+            <div className="search">
+              <span className="search-icon">🔍</span>
+              <input
+                type="search"
+                placeholder="Hledat smlouvu (jméno, rodné č., číslo smlouvy, auto)…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              {query && <button className="search-clear" onClick={() => setQuery('')}>✕</button>}
+            </div>
+            {groups.length === 0 && (
+              <div className="empty" style={{ padding: '40px 20px' }}>
+                <div className="big">🔍</div>
+                <p>Nic nenalezeno pro „{query}".</p>
+              </div>
+            )}
             {groups.map((g) => (
               <section key={g.key} className="day-group">
                 <div className="day-header">{g.label} <span className="day-count">{g.items.length}</span></div>

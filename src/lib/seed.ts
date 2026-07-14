@@ -21,11 +21,11 @@ const TIERS = ['5h', '10h', '24h'] as const
  */
 export async function seedDemoContracts(now: number): Promise<number> {
   const rows: Contract[] = []
-  // rozložení začátků nájmu: dny -2 až +3 od teď, různé hodiny
-  const dayOffsets = [-2, -2, -1, -1, 0, 0, 0, 1, 1, 2, 3, 3]
-  const hours = [8, 14, 9, 17, 7, 12, 19, 10, 15, 9, 11, 16]
+  // rozložení začátků nájmu: posledních 5 dní až dnešek
+  const dayOffsets = [-5, -5, -4, -4, -3, -3, -3, -2, -2, -1, -1, -1, 0, 0]
+  const hours = [8, 15, 9, 17, 7, 12, 19, 10, 16, 8, 13, 18, 9, 14]
 
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < dayOffsets.length; i++) {
     const car = CARS[i % CARS.length]
     const [firstName, lastName, identifier] = NAMES[i % NAMES.length]
     const tier = TIERS[i % TIERS.length]
@@ -38,8 +38,8 @@ export async function seedDemoContracts(now: number): Promise<number> {
     const base =
       tier === '5h' ? car.prices.p5 : tier === '10h' ? car.prices.p10 : car.prices.p24
     const antiradar = i % 3 === 0
-    // stav: část vrácená, část aktivní, jedna po termínu
-    const returned = dayOffsets[i] < 0 && i % 2 === 0
+    // stav: většina minulých vrácená (zelená), pár po termínu (červená), dnešní aktivní
+    const returned = dayOffsets[i] < 0 && i % 3 !== 0
 
     rows.push({
       id: `demo-${i + 1}`,
