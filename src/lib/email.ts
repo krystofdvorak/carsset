@@ -1,11 +1,20 @@
-// Owner appky – sem chodí kopie každé smlouvy automaticky.
-export const OWNER_EMAIL = 'dvorak@weblify.studio'
+import { supabase } from './supabase'
 
 export interface SendResult {
   ok: boolean
-  mode: 'api' | 'share' | 'download' | 'failed'
+  mode: 'api' | 'failed'
   recipients: string[]
   detail?: string
+}
+
+export interface SendOpts {
+  contractNumber: string
+  customerEmail: string
+  customerName: string
+  carName?: string
+  rentalStart?: string
+  rentalEnd?: string
+  price?: number
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {
@@ -20,59 +29,31 @@ async function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /**
- * Odešle smlouvu e-mailem zákazníkovi + ownerovi.
- * 1) Zkusí serverless endpoint /api/send-contract (Resend) – reálné automatické odeslání.
- * 2) Když endpoint není (dev / bez klíče), fallback na systémové sdílení (Mail/WhatsApp).
+ * Odešle smlouvu přes Supabase Edge Function `send-contract` (Brevo):
+ * klientovi + ownerovi (z přihlášení) + info@carsset.cz.
+ * Když backend/klíč není nakonfigurovaný, vrátí ok:false (smlouva je stejně uložená).
  */
-export async function sendContractEmail(
-  pdf: Blob,
-  opts: { contractNumber: string; customerEmail: string; customerName: string },
-): Promise<SendResult> {
-  const recipients = [opts.customerEmail, OWNER_EMAIL].filter((e) => !!e && e.includes('@'))
-  const filename = `smlouva-${opts.contractNumber}.pdf`
-
-  // 1) serverless odeslání
+export async function sendContractEmail(pdf: Blob, opts: SendOpts): Promise<SendResult> {
   try {
     const pdfBase64 = await blobToBase64(pdf)
-    const res = await fetch('/api/send-contract', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: recipients,
-        owner: OWNER_EMAIL,
+    const { data, error } = await supabase.functions.invoke('send-contract', {
+      body: {
+        pdfBase64,
+        filename: `smlouva-${opts.contractNumber}.pdf`,
         contractNumber: opts.contractNumber,
         customerName: opts.customerName,
-        filename,
-        pdfBase64,
-      }),
+        customerEmail: opts.customerEmail,
+        carName: opts.carName,
+        rentalStart: opts.rentalStart,
+        rentalEnd: opts.rentalEnd,
+        price: opts.price,
+      },
     })
-    if (res.ok) return { ok: true, mode: 'api', recipients }
-    // 404 = endpoint neexistuje (dev) → fallback
-  } catch {
-    // síť/endpoint nedostupný → fallback
-  }
-
-  // 2) fallback: systémové sdílení s přílohou PDF (jen na reálně dotykových zařízeních – mobil/tablet)
-  const isTouch =
-    typeof matchMedia !== 'undefined' &&
-    matchMedia('(pointer: coarse)').matches &&
-    (navigator.maxTouchPoints ?? 0) > 0
-  try {
-    const file = new File([pdf], filename, { type: 'application/pdf' })
-    const nav = navigator as Navigator & { canShare?: (d: unknown) => boolean }
-    if (isTouch && nav.canShare?.({ files: [file] }) && navigator.share) {
-      await navigator.share({
-        files: [file],
-        title: `Smlouva ${opts.contractNumber}`,
-        text: `Nájemní smlouva Carsset č. ${opts.contractNumber} pro ${opts.customerName}. Odeslat na: ${recipients.join(', ')}`,
-      })
-      return { ok: true, mode: 'share', recipients }
+    if (error || data?.error) {
+      return { ok: false, mode: 'failed', recipients: [], detail: data?.error ?? error?.message }
     }
+    return { ok: true, mode: 'api', recipients: data?.recipients ?? [] }
   } catch (e) {
-    if ((e as Error).name === 'AbortError') return { ok: false, mode: 'share', recipients, detail: 'zrušeno' }
+    return { ok: false, mode: 'failed', recipients: [], detail: (e as Error).message }
   }
-
-  // bez API a bez sdílení (typicky desktop): nic nestahujeme automaticky –
-  // PDF je uložené u smlouvy a jde odeslat/otevřít z detailu.
-  return { ok: false, mode: 'failed', recipients }
 }

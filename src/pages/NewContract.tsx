@@ -207,6 +207,10 @@ export function NewContract() {
         contractNumber: number,
         customerEmail: customer.email,
         customerName: `${customer.firstName} ${customer.lastName}`.trim(),
+        carName: car.name,
+        rentalStart,
+        rentalEnd,
+        price,
       })
       if (sent.ok && sent.mode === 'api') {
         await setEmailSentTo(id, sent.recipients)

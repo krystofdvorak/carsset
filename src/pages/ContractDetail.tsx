@@ -43,8 +43,7 @@ export function ContractDetail() {
     if (!st?.emailMode) return
     const msg: Record<string, string> = {
       api: `✓ Smlouva odeslána e-mailem: ${(st.recipients || []).join(', ')}`,
-      share: 'Smlouva připravena – vyber Mail/aplikaci a odešli zákazníkovi i majiteli',
-      failed: 'Auto-odeslání zatím není nakonfigurováno (mailing tool). PDF je uložené, pošli přes „Odeslat klientovi znovu".',
+      failed: 'Smlouva uložena. E-mail se zatím neodeslal – zkontroluj nastavení Brevo (nebo pošli „Odeslat klientovi znovu").',
     }
     if (msg[st.emailMode]) flash(msg[st.emailMode])
     nav(location.pathname, { replace: true, state: null })
@@ -80,11 +79,14 @@ export function ContractDetail() {
         contractNumber: contract.number,
         customerEmail: contract.customer.email,
         customerName: `${contract.customer.firstName} ${contract.customer.lastName}`.trim(),
+        carName: contract.carName,
+        rentalStart: contract.rentalStart,
+        rentalEnd: contract.rentalEnd,
+        price: contract.price,
       })
       const msg: Record<string, string> = {
         api: `Odesláno na ${sent.recipients.join(', ')}`,
-        share: 'Otevřeno sdílení – vyber Mail a odešli',
-        failed: 'Auto-odeslání zatím nenakonfigurováno (mailing tool).',
+        failed: 'Odeslání selhalo (zkontroluj nastavení Brevo).',
       }
       if (sent.ok && sent.mode === 'api') await setEmailSentTo(contract.id, sent.recipients)
       flash(msg[sent.mode] ?? '')
