@@ -33,7 +33,16 @@ export function Home() {
   const q = query.trim().toLowerCase()
   const filtered = (contracts ?? []).filter((c) => {
     if (!q) return true
-    const hay = `${c.customer.firstName} ${c.customer.lastName} ${c.customer.identifier} ${c.number} ${c.carName}`.toLowerCase()
+    const d = new Date(c.rentalStart)
+    const dateStr = isNaN(d.getTime())
+      ? ''
+      : [
+          `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`,
+          `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()}`,
+          d.toLocaleDateString('cs-CZ'),
+        ].join(' ')
+    // hledání: datum / jméno / rodné číslo
+    const hay = `${c.customer.firstName} ${c.customer.lastName} ${c.customer.identifier} ${dateStr}`.toLowerCase()
     return hay.includes(q)
   })
 
@@ -81,7 +90,7 @@ export function Home() {
               <span className="search-icon">🔍</span>
               <input
                 type="search"
-                placeholder="Hledat smlouvu (jméno, rodné č., číslo smlouvy, auto)…"
+                placeholder="Hledat podle data, jména nebo rodného čísla…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
