@@ -68,7 +68,8 @@ export function Home() {
       <header className="topbar">
         <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="Carsset" className="brand-logo" />
         <div style={{ flex: 1 }} />
-        <button className="icon-btn" onClick={() => nav('/auta')}>＋ Nový vůz do nabídky</button>
+        <button className="icon-btn" title="Statistiky" onClick={() => nav('/statistiky')} style={{ padding: '0 12px' }}>📊</button>
+        <button className="icon-btn" onClick={() => nav('/auta')}>🚗 Nabídka</button>
         <button className="icon-btn" title="Odhlásit" onClick={() => signOut()} style={{ padding: '0 12px' }}>⎋</button>
       </header>
 

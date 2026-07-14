@@ -17,6 +17,8 @@ export interface Car {
   deposit: number
   /** true = přednastavené vozidlo z kódu; false/undefined = přidané uživatelem (v DB) */
   seeded?: boolean
+  /** skryté / neaktuální – nenabízí se u nové smlouvy */
+  hidden?: boolean
 }
 
 export const TIERS: { key: PriceTier; label: string; hours: number; weekendOnly?: boolean }[] = [

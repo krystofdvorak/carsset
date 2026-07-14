@@ -49,7 +49,16 @@ create table if not exists public.contracts (
 create index if not exists contracts_created_idx on public.contracts (created_at desc);
 create index if not exists contracts_car_idx on public.contracts (car_id);
 
+-- skrytá / neaktuální vozidla (id přednastaveného i vlastního auta)
+create table if not exists public.hidden_cars (
+  car_id text primary key
+);
+
 -- ---------- RLS (jen přihlášení) ----------
+alter table public.hidden_cars enable row level security;
+drop policy if exists "auth all" on public.hidden_cars;
+create policy "auth all" on public.hidden_cars for all to authenticated using (true) with check (true);
+
 alter table public.cars enable row level security;
 alter table public.clients enable row level security;
 alter table public.contracts enable row level security;

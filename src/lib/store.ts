@@ -212,6 +212,16 @@ export async function deleteUserCar(id: string) {
   await supabase.from('cars').delete().eq('id', id)
 }
 
+// ---------- Skrytá / neaktuální vozidla ----------
+export async function listHiddenCarIds(): Promise<string[]> {
+  const { data } = await supabase.from('hidden_cars').select('car_id')
+  return (data ?? []).map((r: Row) => r.car_id as string)
+}
+export async function setCarHidden(carId: string, hidden: boolean) {
+  if (hidden) await supabase.from('hidden_cars').upsert({ car_id: carId })
+  else await supabase.from('hidden_cars').delete().eq('car_id', carId)
+}
+
 // ---------- Klienti (našeptávání) ----------
 export async function searchClients(q: string): Promise<Client[]> {
   const query = q.trim()

@@ -107,6 +107,35 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 }
 .pass-toggle:hover { color: var(--text); }
 
+/* statistiky */
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+.kpi-val { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.kpi-lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.bar-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.bar-lbl { flex: 0 0 76px; font-size: 13px; color: var(--muted); }
+.bar-track { flex: 1; height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.bar-num { flex: 0 0 auto; font-size: 13px; font-weight: 650; }
+
+/* řádky nabídky vozidel (správa) */
+.offer-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.offer-row:last-child { border-bottom: none; }
+.offer-row.off { opacity: 0.5; }
+.offer-emoji { font-size: 22px; }
+.offer-main { flex: 1; min-width: 0; }
+.offer-name { font-weight: 650; font-size: 14px; }
+.offer-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* předvolby délky pronájmu */
+.presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.preset {
+  flex: 1 1 auto; min-width: 64px; min-height: 44px; border-radius: 12px;
+  border: 2px solid var(--line); background: var(--surface-2); color: var(--text);
+  font-size: 14px; font-weight: 650;
+}
+.preset.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); }
+
 /* datum a čas – klik kamkoliv otevře, světlá ikona kalendáře */
 .dt-input { cursor: pointer; }
 .dt-input::-webkit-calendar-picker-indicator {
@@ -214,7 +243,7 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 .banner.ok { background: color-mix(in srgb, var(--ok) 14%, var(--surface)); color: #86efac; border: 1px solid color-mix(in srgb, var(--ok) 30%, var(--line)); }
 
 .fab {
-  position: fixed; right: 12px; bottom: calc(12px + var(--safe-b)); z-index: 25;
+  position: fixed; right: 14px; bottom: max(10px, calc(var(--safe-b) - 6px)); z-index: 25;
   background: var(--accent); color: #fff; border: none; height: 56px; padding: 0 22px 0 18px; border-radius: 999px;
   font-size: 16px; font-weight: 650; display: flex; align-items: center; gap: 8px; box-shadow: 0 10px 30px rgba(239,0,1,0.4);
 }

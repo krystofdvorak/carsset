@@ -4,6 +4,7 @@ import { Home } from './pages/Home'
 import { NewContract } from './pages/NewContract'
 import { ContractDetail } from './pages/ContractDetail'
 import { AddCar } from './pages/AddCar'
+import { Statistiky } from './pages/Statistiky'
 import { Login } from './pages/Login'
 import { getSession, onAuthChange } from './lib/store'
 
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/nova" element={<NewContract />} />
         <Route path="/smlouva/:id" element={<ContractDetail />} />
         <Route path="/auta" element={<AddCar />} />
+        <Route path="/statistiky" element={<Statistiky />} />
       </Routes>
     </HashRouter>
   )

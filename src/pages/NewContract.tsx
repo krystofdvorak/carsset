@@ -34,6 +34,7 @@ export function NewContract() {
   const [carId, setCarId] = useState('')
   const [rentalStart, setRentalStart] = useState(nowLocal())
   const [rentalEnd, setRentalEnd] = useState(addHoursLocal(nowLocal(), 24))
+  const [preset, setPreset] = useState<number | 'custom'>(24)
   const [basePrice, setBasePrice] = useState<number | ''>('')
   const [antiradar, setAntiradar] = useState(false)
   const [depositPaid, setDepositPaid] = useState(false)
@@ -101,7 +102,7 @@ export function NewContract() {
   }
 
   const filtered = cars
-    .filter((c) => c.type === type)
+    .filter((c) => c.type === type && !c.hidden)
     .sort((a, b) => a.prices.p24 - b.prices.p24)
   const car = carById(cars, carId)
   const basePriceNum = basePrice === '' ? 0 : basePrice
@@ -124,6 +125,18 @@ export function NewContract() {
       return Math.max(0, n + (v ? ANTIRADAR_PRICE : -ANTIRADAR_PRICE))
     })
   }
+
+  // při změně kroku vždy nahoru (ať to neskočí na náhled/podpis dole)
+  useEffect(() => {
+    window.scrollTo({ top: 0 })
+    const t = setTimeout(() => window.scrollTo({ top: 0 }), 60)
+    return () => clearTimeout(t)
+  }, [step])
+
+  // předvolba délky pronájmu -> dopočítá konec (kromě „Vlastní")
+  useEffect(() => {
+    if (preset !== 'custom') setRentalEnd(addHoursLocal(rentalStart, preset))
+  }, [rentalStart, preset])
 
   // hlídání překrytí rezervací
   useEffect(() => {
@@ -316,8 +329,24 @@ export function NewContract() {
             <div className="card">
               <h2>Termín</h2>
               <DateTimeField label="Začátek nájmu" value={rentalStart} onChange={setRentalStart} />
-              <DateTimeField label="Konec nájmu" value={rentalEnd} onChange={setRentalEnd} />
-              {!endAfterStart && <div className="field-err" style={{ marginTop: -4 }}>Konec musí být po začátku.</div>}
+              <div className="field" style={{ marginBottom: preset === 'custom' ? 14 : 4 }}>
+                <label>Délka pronájmu</label>
+                <div className="presets">
+                  {[5, 10, 24, 72].map((h) => (
+                    <button key={h} type="button" className={`preset ${preset === h ? 'sel' : ''}`} onClick={() => setPreset(h)}>{h} h</button>
+                  ))}
+                  <button type="button" className={`preset ${preset === 'custom' ? 'sel' : ''}`} onClick={() => setPreset('custom')}>Vlastní</button>
+                </div>
+              </div>
+              {preset === 'custom' ? (
+                <DateTimeField label="Konec nájmu" value={rentalEnd} onChange={setRentalEnd} />
+              ) : (
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label>Konec nájmu (dopočítáno)</label>
+                  <input type="text" value={fmtDateTime(rentalEnd)} disabled />
+                </div>
+              )}
+              {!endAfterStart && <div className="field-err" style={{ marginTop: 8 }}>Konec musí být po začátku.</div>}
             </div>
 
             {conflict && (

@@ -1,16 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { listUserCars, addUserCar, deleteUserCar } from '../lib/store'
-import type { UserCar } from '../lib/types'
+import { addUserCar, deleteUserCar, setCarHidden } from '../lib/store'
+import { useCars } from '../hooks/useCars'
 import type { CarType } from '../data/cars'
 import { fmtCZK } from '../lib/format'
 import { BackButton } from '../components/BackButton'
 
 export function AddCar() {
   const nav = useNavigate()
-  const [userCars, setUserCars] = useState<UserCar[]>([])
-  const reload = () => listUserCars().then((r) => setUserCars(r.reverse())).catch(() => {})
-  useEffect(() => { reload() }, [])
+  const [reloadKey, setReloadKey] = useState(0)
+  const cars = useCars(reloadKey)
+  const reload = () => setReloadKey((k) => k + 1)
+
   const [name, setName] = useState('')
   const [type, setType] = useState<CarType>('osobni')
   const [deposit, setDeposit] = useState<number | ''>(5000)
@@ -30,17 +31,42 @@ export function AddCar() {
         prices: { p5: 0, p10: 0, p24: 0, p24w: 0, p72: 0 },
       })
       setName(''); setDeposit(5000)
-      await reload()
+      reload()
     } finally {
       setSaving(false)
     }
   }
 
+  async function toggleHidden(id: string, hidden: boolean) {
+    await setCarHidden(id, hidden)
+    reload()
+  }
+  async function remove(id: string) {
+    if (!confirm('Smazat toto vozidlo z nabídky?')) return
+    await deleteUserCar(id)
+    reload()
+  }
+
+  const osobni = cars.filter((c) => c.type === 'osobni')
+  const dodavky = cars.filter((c) => c.type === 'dodavka')
+
+  const carRow = (c: (typeof cars)[number]) => (
+    <div key={c.id} className={`offer-row ${c.hidden ? 'off' : ''}`}>
+      <span className="offer-emoji">{c.type === 'dodavka' ? '🚐' : '🏎️'}</span>
+      <span className="offer-main">
+        <div className="offer-name">{c.name}</div>
+        <div className="offer-meta">kauce {fmtCZK(c.deposit)}{c.hidden ? ' · neaktivní' : ''}</div>
+      </span>
+      <button className="chip" onClick={() => toggleHidden(c.id, !c.hidden)}>{c.hidden ? 'Zobrazit' : 'Skrýt'}</button>
+      {!c.seeded && <button className="chip danger" onClick={() => remove(c.id)}>Smazat</button>}
+    </div>
+  )
+
   return (
     <div className="app">
       <header className="topbar">
         <BackButton onClick={() => nav('/')} />
-        <div style={{ flex: 1 }}><h1>Auta v nabídce</h1><div className="sub">Přidej vozidlo do nabídky</div></div>
+        <div style={{ flex: 1 }}><h1>Nabídka vozidel</h1><div className="sub">Přidej, skryj nebo uprav</div></div>
       </header>
 
       <main className="content">
@@ -68,20 +94,14 @@ export function AddCar() {
           <p className="note" style={{ marginTop: 10 }}>Cenu nájmu zadáváš u každé smlouvy zvlášť.</p>
         </div>
 
-        {userCars.length > 0 && (
-          <div className="card">
-            <h2>Přidaná vozidla ({userCars.length})</h2>
-            {userCars.map((c) => (
-              <div key={c.id} className="summary-row">
-                <span className="k">{c.type === 'dodavka' ? '🚐' : '🏎️'} {c.name}</span>
-                <span className="v" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  kauce {fmtCZK(c.deposit)}
-                  <button className="chip" onClick={async () => { await deleteUserCar(c.id); reload() }}>Smazat</button>
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="card">
+          <h2>Osobní ({osobni.length})</h2>
+          {osobni.map(carRow)}
+        </div>
+        <div className="card">
+          <h2>Dodávky ({dodavky.length})</h2>
+          {dodavky.length ? dodavky.map(carRow) : <p className="note">Zatím žádné dodávky.</p>}
+        </div>
       </main>
     </div>
   )
