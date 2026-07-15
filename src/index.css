@@ -203,8 +203,8 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 }
 .bottombar .btn { flex: 1; }
 .bottombar .btn.ghost { flex: 0 0 auto; padding: 0 20px; }
-.bottombar.stack { flex-direction: column; gap: 8px; }
-.bottombar.stack .btn { width: 100%; flex: none; }
+.bottombar.stack { flex-direction: column; gap: 8px; align-items: center; }
+.bottombar.stack .btn { width: 100%; max-width: 300px; flex: none; }
 .btn.small { min-height: var(--tap); font-size: 15px; background: transparent; border: 1px solid var(--line); color: var(--muted); }
 
 .steps { display: flex; gap: 6px; padding: 16px 16px 10px; }
