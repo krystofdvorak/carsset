@@ -38,8 +38,12 @@ export function AddCar() {
   }
 
   async function toggleHidden(id: string, hidden: boolean) {
-    await setCarHidden(id, hidden)
-    reload()
+    try {
+      await setCarHidden(id, hidden)
+      reload()
+    } catch (e) {
+      alert('Skrytí se nezdařilo: ' + (e as Error).message + '\n\nSpusť prosím znovu supabase/schema.sql (chybí tabulka hidden_cars).')
+    }
   }
   async function remove(id: string) {
     if (!confirm('Smazat toto vozidlo z nabídky?')) return

@@ -44,7 +44,8 @@ export function Statistiky() {
       cur.count++; cur.revenue += c.price || 0
       byCar.set(c.carName, cur)
     }
-    const topCars = [...byCar.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.count - a.count).slice(0, 6)
+    const topCars = [...byCar.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.revenue - a.revenue)
+    const maxCarRev = topCars[0]?.revenue || 1
 
     const byDur = new Map<string, number>()
     for (const c of all) byDur.set(durationBucket(c), (byDur.get(durationBucket(c)) ?? 0) + 1)
@@ -62,7 +63,7 @@ export function Statistiky() {
       return [...m.values()].filter((x) => x.count > 1).sort((a, b) => b.count - a.count).slice(0, 5)
     })()
 
-    return { total: all.length, revenue, clients, monthRevenue, active, overdue, returned, avg: all.length ? Math.round(revenue / all.length) : 0, topCars, durations, maxDur, topClients }
+    return { total: all.length, revenue, clients, monthRevenue, active, overdue, returned, avg: all.length ? Math.round(revenue / all.length) : 0, topCars, maxCarRev, durations, maxDur, topClients }
   }, [contracts])
 
   return (
@@ -89,11 +90,15 @@ export function Statistiky() {
             </div>
 
             <div className="card">
-              <h2>Nejvytíženější vozidla</h2>
-              {s.topCars.map((c, i) => (
-                <div key={c.name} className="summary-row">
-                  <span className="k">{i + 1}. {c.name}</span>
-                  <span className="v">{c.count}× · {fmtCZK(c.revenue)}</span>
+              <h2>Výdělek podle vozidla</h2>
+              {s.topCars.map((c) => (
+                <div key={c.name} className="carstat">
+                  <div className="carstat-top">
+                    <span className="carstat-name">{c.name}</span>
+                    <span className="carstat-rev">{fmtCZK(c.revenue)}</span>
+                  </div>
+                  <span className="bar-track"><span className="bar-fill" style={{ width: `${Math.round((c.revenue / s.maxCarRev) * 100)}%` }} /></span>
+                  <div className="carstat-sub">{c.count}× pronájem · ø {fmtCZK(Math.round(c.revenue / c.count))} / smlouva</div>
                 </div>
               ))}
             </div>

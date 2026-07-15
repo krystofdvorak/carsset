@@ -218,8 +218,10 @@ export async function listHiddenCarIds(): Promise<string[]> {
   return (data ?? []).map((r: Row) => r.car_id as string)
 }
 export async function setCarHidden(carId: string, hidden: boolean) {
-  if (hidden) await supabase.from('hidden_cars').upsert({ car_id: carId })
-  else await supabase.from('hidden_cars').delete().eq('car_id', carId)
+  const { error } = hidden
+    ? await supabase.from('hidden_cars').upsert({ car_id: carId })
+    : await supabase.from('hidden_cars').delete().eq('car_id', carId)
+  if (error) throw error
 }
 
 // ---------- Klienti (našeptávání) ----------

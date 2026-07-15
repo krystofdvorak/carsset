@@ -117,6 +117,12 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 .bar-track { flex: 1; height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
 .bar-fill { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
 .bar-num { flex: 0 0 auto; font-size: 13px; font-weight: 650; }
+.carstat { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.carstat:last-child { border-bottom: none; }
+.carstat-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.carstat-name { font-weight: 650; font-size: 14px; }
+.carstat-rev { font-weight: 800; font-size: 16px; white-space: nowrap; }
+.carstat-sub { font-size: 12px; color: var(--muted); margin-top: 5px; }
 
 /* řádky nabídky vozidel (správa) */
 .offer-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }

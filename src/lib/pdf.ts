@@ -29,11 +29,11 @@ export interface PdfData {
   photos: PhotoBlob[]
 }
 
-// Údaje pronajímatele – Carsset (uprav dle reálných firemních údajů)
+// Údaje pronajímatele – CARSSET (Leoš Holásek)
 export const LESSOR = {
-  name: 'Carsset – půjčovna aut Brno',
-  ico: '00000000',
-  address: 'Brno',
+  name: 'Leoš Holásek',
+  ico: '08774838',
+  ucet: '310683847/0300',
   phone: '+420 777 95 95 78',
   email: 'info@carsset.cz',
 }
@@ -92,13 +92,48 @@ async function buildDocDefinition(c: PdfData): Promise<TDocumentDefinitions> {
   const cust = c.customer
   const fullName = `${cust.firstName} ${cust.lastName}`.trim() || '—'
 
-  const clauses = [
-    'Nájemce prohlašuje, že je držitelem platného řidičského oprávnění příslušné skupiny a je způsobilý k řízení vozidla.',
-    'Nájemce je povinen vrátit vozidlo ve sjednaném termínu, čisté a s plnou nádrží. Za každou započatou hodinu prodlení náleží pronajímateli smluvní pokuta.',
-    'Nájemce nese odpovědnost za škodu na vozidle vzniklou v době nájmu, a to do výše sjednané spoluúčasti / kauce.',
-    'Je zakázáno kouření ve vozidle, účast na závodech a řízení pod vlivem alkoholu či návykových látek.',
-    'Vozidlo nesmí být bez písemného souhlasu pronajímatele vyvezeno mimo území České republiky.',
-    'Kauce bude vrácena při vrácení vozidla bez závad. Smluvní strany souhlasí se zpracováním osobních údajů pro účely této smlouvy dle GDPR.',
+  const prava = [
+    'Pronajímatel provede s nájemcem zkušební jízdu, seznámí ho s provozními a technickými pokyny výrobce a předvede funkční způsobilost vozidla. Připomínky ke stavu vozidla musí nájemce uplatnit nejpozději před podpisem předávacího protokolu.',
+    'Vozidlo může užívat a řídit pouze nájemce, případně se souhlasem pronajímatele osoba starší 18 let, držitel řidičského oprávnění příslušné skupiny; údaje o dalších řidičích musí být uvedeny v protokolu.',
+    'Nájemce je oprávněn užívat vozidlo k účelu, k němuž obvykle slouží, souhlasí se stavem vozu i úpravami a přebírá odpovědnost za případné pokuty.',
+    'Nájemce nese náklady na opravu, pokud závadu způsobil nedodržením pokynů výrobce nebo porušením pravidel silničního provozu.',
+  ]
+  const zakazy = [
+    'Řídit vozidlo po požití alkoholu, omamných látek či léků ovlivňujících schopnost řízení, nebo takové osobě přenechat vozidlo k řízení.',
+    'Poskytnout vozidlo jiné osobě za účelem podnikání.',
+    'Přepravovat náklady těžší než nosnost vozidla, zvířata či nebezpečné náklady.',
+    'Používat vozidlo k tažení jiných vozidel.',
+    'Umístit na vozidlo jakoukoliv reklamu.',
+    'Driftovat, smykovat, pálit gumy či jinak snižovat kondici vozidla (zákaz vypínání trakce „DTC").',
+    'Kouřit ve vozidle (pod pokutou 3 000 Kč).',
+    'Vrátit vozidlo v horším stavu; při nutnosti čištění a mytí hradí náklady nájemce (pokuta 500–3 500 Kč).',
+    'Cesta mimo ČR bez předchozí písemné domluvy (pod pokutou 20 000 Kč).',
+  ]
+  const pojisteni = [
+    'Vozidlo je pojištěno ze zákonné odpovědnosti i havarijně pro ČR a státy EU. Pronajímatel neodpovídá za věci ponechané ve vozidle.',
+    'Každou pojistnou událost a poškození je nájemce povinen ihned ohlásit pronajímateli a Policii ČR a vyplnit záznam o nehodě; při nesplnění může být postih pojišťovny uplatněn proti nájemci.',
+    'Nekrytou část nákladů škody hradí nájemce do maximální výše 10 % sjednané spoluúčasti. Při krádeži vozidla hradí nájemce 10 % z pořizovací ceny poníženou o amortizaci.',
+    'Vozy jsou připojištěny; odtah zdarma v okruhu 100 km, každý další km hradí nájemce na místě.',
+  ]
+  const sankce = [
+    'Porušení pravidla, že vozidlo smí řídit pouze nájemce (nebo schválená osoba starší 18 let s příslušným oprávněním).',
+    'Oprava vozidla bez souhlasu pronajímatele nebo mimo určený servis.',
+    'Za každou nevrácenou věc z vybavení vozidla + náhrada ceny nového příslušenství (pokuta 500 Kč / ks).',
+    'Vrácení vozidla s prázdnou nádrží (pokuta 2 500 Kč + cena paliva).',
+    'Prodlení s vrácením o více než 1 hodinu (500 Kč za každou započatou hodinu).',
+    'Poškození litého kola (odřené) 5 000–7 000 Kč / ks dle rozsahu.',
+    'Havárie a následná oprava v servisu: 3 000 Kč / den jako ušlý zisk + náklady opravy.',
+  ]
+  const gdpr = [
+    'Osobní údaje nájemce budou zpracovány pouze za účelem realizace smluvního vztahu (pronájmu vozidla); poskytnutí je nezbytné pro splnění smlouvy.',
+    'Pronajímatel předá osobní údaje dalším subjektům jen ze zákonného důvodu nebo pro ochranu svých práv (např. vymáhání pohledávky).',
+    'Nájemce má právo na přístup k údajům, jejich opravu či výmaz, omezení zpracování, námitku i přenositelnost; se stížností se může obrátit na Úřad pro ochranu osobních údajů.',
+    'Údaje jsou zpracovávány po dobu trvání smlouvy a dále po dobu nezbytnou k ochraně práv pronajímatele.',
+  ]
+  const zaver = [
+    'Práva a povinnosti výslovně neupravená se řídí zákonem č. 89/2012 Sb., občanský zákoník, v platném znění.',
+    'Případné spory rozhodují příslušné soudy České republiky.',
+    'Smluvní strany prohlašují, že si smlouvu před podpisem přečetly, byla uzavřena podle jejich pravé a svobodné vůle, vážně a srozumitelně, nikoli v tísni.',
   ]
 
   const content: Content[] = [
@@ -118,8 +153,9 @@ async function buildDocDefinition(c: PdfData): Promise<TDocumentDefinitions> {
 
     { text: '1. Smluvní strany', style: 'h2' },
     { text: 'Pronajímatel', style: 'caption', margin: [0, 4, 0, 2] },
-    labelValue('Název', LESSOR.name),
-    labelValue('Sídlo', LESSOR.address),
+    labelValue('Jméno', LESSOR.name),
+    labelValue('IČO', LESSOR.ico),
+    labelValue('Bankovní spojení', LESSOR.ucet),
     labelValue('Kontakt', `${LESSOR.phone}, ${LESSOR.email}`),
 
     { text: 'Nájemce', style: 'caption', margin: [0, 8, 0, 2] },
@@ -144,8 +180,24 @@ async function buildDocDefinition(c: PdfData): Promise<TDocumentDefinitions> {
     checkbox('Nájemce si půjčuje antiradar', c.antiradar),
     checkbox('Kauce byla uhrazena při převzetí', c.depositPaid),
 
-    { text: '5. Ujednání smluvních stran', style: 'h2', margin: [0, 10, 0, 4] },
-    { ol: clauses, fontSize: 9.5, lineHeight: 1.15, margin: [0, 0, 0, 10] },
+    { text: 'IV. Práva a povinnosti smluvních stran', style: 'h2', margin: [0, 12, 0, 4], pageBreak: 'before' },
+    { ol: prava, fontSize: 9, lineHeight: 1.15, margin: [0, 0, 0, 6] },
+    { text: 'Nájemce nesmí:', bold: true, fontSize: 9.5, margin: [0, 2, 0, 2] },
+    { ol: zakazy, fontSize: 9, lineHeight: 1.15, margin: [0, 0, 0, 8] },
+
+    { text: 'V. Pojištění', style: 'h2', margin: [0, 8, 0, 4] },
+    { ol: pojisteni, fontSize: 9, lineHeight: 1.15, margin: [0, 0, 0, 8] },
+
+    { text: 'VI. Sankce', style: 'h2', margin: [0, 8, 0, 4], pageBreak: 'before' },
+    { text: 'Nájemce je povinen zaplatit pronajímateli smluvní pokutu ve výši 10 000 Kč za každý porušený případ z následujících:', fontSize: 9, margin: [0, 0, 0, 4] },
+    { ol: sankce, fontSize: 9, lineHeight: 1.15, margin: [0, 0, 0, 4] },
+    { text: 'Smluvní pokuty je nutno uhradit ihned po vrácení vozidla (hotově nebo na účet ' + LESSOR.ucet + '). Pronajímatel nenese odpovědnost za pokuty způsobené úpravami vozů.', fontSize: 9, margin: [0, 0, 0, 8] },
+
+    { text: 'VII. Zpracování osobních údajů (GDPR)', style: 'h2', margin: [0, 8, 0, 4] },
+    { ol: gdpr, fontSize: 9, lineHeight: 1.15, margin: [0, 0, 0, 8] },
+
+    { text: 'VIII. Ostatní a závěrečná ujednání', style: 'h2', margin: [0, 8, 0, 4] },
+    { ol: zaver, fontSize: 9, lineHeight: 1.15, margin: [0, 0, 0, 10] },
 
     {
       text: 'Nájemce svým podpisem potvrzuje, že si smlouvu přečetl, souhlasí s jejím obsahem a převzal vozidlo v pořádku.',
@@ -158,7 +210,7 @@ async function buildDocDefinition(c: PdfData): Promise<TDocumentDefinitions> {
         [
           { text: `V Brně, dne ${new Date(c.createdAt).toLocaleDateString('cs-CZ')}`, fontSize: 9, margin: [0, 0, 0, 30] },
           { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 0.5 }] },
-          { text: 'Pronajímatel (Carsset)', fontSize: 9, margin: [0, 4, 0, 0] },
+          { text: `Pronajímatel – ${LESSOR.name}`, fontSize: 9, margin: [0, 4, 0, 0] },
         ],
         [
           c.signature

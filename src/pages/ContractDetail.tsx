@@ -150,11 +150,19 @@ export function ContractDetail() {
           <div className="summary-total"><span className="k">Cena celkem</span><span className="amount">{fmtCZK(contract.price)}</span></div>
         </div>
 
-        {contract.photos.length > 0 && (
+        {contract.photos.some((p) => p.kind === 'car') && (
           <div className="card">
-            <h2>Fotky ({contract.photos.length})</h2>
+            <h2>Fotky vozidla ({contract.photos.filter((p) => p.kind === 'car').length})</h2>
             <div className="photo-grid">
-              {contract.photos.map((p, i) => <PhotoThumb key={i} path={p.path} />)}
+              {contract.photos.filter((p) => p.kind === 'car').map((p, i) => <PhotoThumb key={i} path={p.path} />)}
+            </div>
+          </div>
+        )}
+        {contract.photos.some((p) => p.kind !== 'car') && (
+          <div className="card">
+            <h2>Fotky dokladů ({contract.photos.filter((p) => p.kind !== 'car').length})</h2>
+            <div className="photo-grid">
+              {contract.photos.filter((p) => p.kind !== 'car').map((p, i) => <PhotoThumb key={i} path={p.path} />)}
             </div>
           </div>
         )}
