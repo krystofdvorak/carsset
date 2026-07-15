@@ -59,6 +59,22 @@ export async function ocrDoklad(blob: Blob, docType: 'op' | 'rp'): Promise<OcrRe
   return data as OcrResult
 }
 
+// ---------- Poděkování + recenze (při vrácení auta) ----------
+export async function sendThankYou(opts: {
+  contractNumber: string
+  customerName: string
+  customerEmail: string
+}): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.functions.invoke('send-contract', {
+      body: { kind: 'thankyou', ...opts },
+    })
+    return !error && !data?.error
+  } catch {
+    return false
+  }
+}
+
 // ---------- Auth ----------
 export async function signIn(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password })

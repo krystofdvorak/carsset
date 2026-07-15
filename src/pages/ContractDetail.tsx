@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import type { Contract } from '../lib/types'
-import { getContract, markReturned as apiMarkReturned, deleteContract, setEmailSentTo, signedUrl, downloadBlob } from '../lib/store'
+import { getContract, markReturned as apiMarkReturned, deleteContract, setEmailSentTo, signedUrl, downloadBlob, sendThankYou } from '../lib/store'
 import { fmtCZK, fmtDateTime, carEmoji } from '../lib/format'
 import { sendContractEmail } from '../lib/email'
 import { contractStatus } from '../lib/status'
@@ -97,6 +97,14 @@ export function ContractDetail() {
     await apiMarkReturned(contract.id, true)
     flash('Označeno jako vrácené ✓')
     reload()
+    // poděkování + prosba o recenzi klientovi (neblokující)
+    if (contract.customer.email) {
+      sendThankYou({
+        contractNumber: contract.number,
+        customerName: `${contract.customer.firstName} ${contract.customer.lastName}`.trim(),
+        customerEmail: contract.customer.email,
+      }).then((ok) => { if (ok) flash('✓ Poděkování s prosbou o recenzi odesláno klientovi') })
+    }
   }
   async function undoReturned() {
     await apiMarkReturned(contract.id, false)
