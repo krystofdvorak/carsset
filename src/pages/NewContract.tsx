@@ -460,6 +460,12 @@ export function NewContract() {
               ) : (
                 <div className="pdf-loading"><span className="spin">⏳</span></div>
               )}
+              {previewUrl && (
+                <button type="button" className="btn ghost" style={{ marginTop: 10 }} onClick={() => window.open(previewUrl, '_blank')}>
+                  📄 Otevřít celou smlouvu (všechny strany)
+                </button>
+              )}
+              <p className="note" style={{ marginTop: 8 }}>Náhled ukazuje 1. stranu. Celé znění (více stran) otevřeš tlačítkem výše.</p>
             </div>
             <div className="card">
               <h2>Podpis nájemce</h2>

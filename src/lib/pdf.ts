@@ -180,7 +180,7 @@ async function buildDocDefinition(c: PdfData): Promise<TDocumentDefinitions> {
     checkbox('Nájemce si půjčuje antiradar', c.antiradar),
     checkbox('Kauce byla uhrazena při převzetí', c.depositPaid),
 
-    { text: 'IV. Práva a povinnosti smluvních stran', style: 'h2', margin: [0, 12, 0, 4], pageBreak: 'before' },
+    { text: 'IV. Práva a povinnosti smluvních stran', style: 'h2', margin: [0, 12, 0, 4] },
     { ol: prava, fontSize: 9, lineHeight: 1.15, margin: [0, 0, 0, 6] },
     { text: 'Nájemce nesmí:', bold: true, fontSize: 9.5, margin: [0, 2, 0, 2] },
     { ol: zakazy, fontSize: 9, lineHeight: 1.15, margin: [0, 0, 0, 8] },
@@ -188,7 +188,7 @@ async function buildDocDefinition(c: PdfData): Promise<TDocumentDefinitions> {
     { text: 'V. Pojištění', style: 'h2', margin: [0, 8, 0, 4] },
     { ol: pojisteni, fontSize: 9, lineHeight: 1.15, margin: [0, 0, 0, 8] },
 
-    { text: 'VI. Sankce', style: 'h2', margin: [0, 8, 0, 4], pageBreak: 'before' },
+    { text: 'VI. Sankce', style: 'h2', margin: [0, 8, 0, 4] },
     { text: 'Nájemce je povinen zaplatit pronajímateli smluvní pokutu ve výši 10 000 Kč za každý porušený případ z následujících:', fontSize: 9, margin: [0, 0, 0, 4] },
     { ol: sankce, fontSize: 9, lineHeight: 1.15, margin: [0, 0, 0, 4] },
     { text: 'Smluvní pokuty je nutno uhradit ihned po vrácení vozidla (hotově nebo na účet ' + LESSOR.ucet + '). Pronajímatel nenese odpovědnost za pokuty způsobené úpravami vozů.', fontSize: 9, margin: [0, 0, 0, 8] },
